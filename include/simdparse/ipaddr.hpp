@@ -34,6 +34,20 @@ namespace simdparse
             : _addr(addr)
         {}
 
+        constexpr ipv4_addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
+            : _addr{ a, b, c, d }
+        {}
+
+        bool operator==(const ipv4_addr& op) const
+        {
+            return _addr == op._addr;
+        }
+
+        bool operator!=(const ipv4_addr& op) const
+        {
+            return _addr != op._addr;
+        }
+
         constexpr std::size_t max_size() const
         {
             return _addr.max_size();
@@ -79,6 +93,28 @@ namespace simdparse
         constexpr ipv6_addr(const ipv6_t& addr)
             : _addr(addr)
         {}
+
+        constexpr ipv6_addr(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h)
+            : _addr{
+                static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
+                static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff),
+                static_cast<uint8_t>((c >> 8) & 0xff), static_cast<uint8_t>(c & 0xff),
+                static_cast<uint8_t>((d >> 8) & 0xff), static_cast<uint8_t>(d & 0xff),
+                static_cast<uint8_t>((e >> 8) & 0xff), static_cast<uint8_t>(e & 0xff),
+                static_cast<uint8_t>((f >> 8) & 0xff), static_cast<uint8_t>(f & 0xff),
+                static_cast<uint8_t>((g >> 8) & 0xff), static_cast<uint8_t>(g & 0xff),
+                static_cast<uint8_t>((h >> 8) & 0xff), static_cast<uint8_t>(h & 0xff) }
+        {}
+
+        bool operator==(const ipv6_addr& op) const
+        {
+            return _addr == op._addr;
+        }
+
+        bool operator!=(const ipv6_addr& op) const
+        {
+            return _addr != op._addr;
+        }
 
         constexpr std::size_t max_size() const
         {

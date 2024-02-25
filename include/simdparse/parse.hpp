@@ -64,4 +64,15 @@ namespace simdparse
             throw parse_error(std::string(buf.data(), buf.data() + n));
         }
     }
+
+    template<typename T>
+    void check_fail(const std::string_view& str)
+    {
+        T obj;
+        if (obj.parse(str)) {
+            std::array<char, 256> buf;
+            int n = std::snprintf(buf.data(), buf.size(), "unexpected: parsed %s from: %.32s (len = %zu)", T::name.data(), str.data(), str.size());
+            throw parse_error(std::string(buf.data(), buf.data() + n));
+        }
+    }
 }

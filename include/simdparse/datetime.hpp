@@ -94,16 +94,76 @@ namespace simdparse
             return 0;
         }
 
+#if defined(__AVX2__)
+        /** Parses an RFC 3339 date string with SIMD instructions. */
+        bool parse(const std::string_view& str)
+        {
+            char buf[16] = { 0 };
+            std::memcpy(buf, str.data(), str.size());
+            const __m128i characters = _mm_loadu_si128(reinterpret_cast<const __m128i*>(buf));
+
+            // validate a date string `YYYY-MM-DD`
+            const __m128i lower_bound = _mm_setr_epi8(
+                48, 48, 48, 48, // year; 48 = ASCII '0'
+                45,             // ASCII '-'
+                48, 48,         // month
+                45,             // ASCII '-'
+                48, 48,         // day
+                -128, -128, -128, -128, -128, -128  // don't care
+            );
+            const __m128i upper_bound = _mm_setr_epi8(
+                57, 57, 57, 57, // year; 57 = ASCII '9'
+                45,             // ASCII '-'
+                49, 57,         // month
+                45,             // ASCII '-'
+                51, 57,         // day
+                127, 127, 127, 127, 127, 127  // don't care
+            );
+
+            const __m128i too_low = _mm_cmpgt_epi8(lower_bound, characters);
+            const __m128i too_high = _mm_cmpgt_epi8(characters, upper_bound);
+            const int out_of_bounds = _mm_movemask_epi8(too_low) | _mm_movemask_epi8(too_high);
+            if (out_of_bounds) {
+                return false;
+            }
+
+            // convert ASCII characters into digit value (offset from character `0`)
+            const __m128i ascii_digit_mask = _mm_setr_epi8(15, 15, 15, 15, 0, 15, 15, 0, 15, 15, 0, 0, 0, 0, 0, 0);
+            const __m128i spread_integers = _mm_and_si128(characters, ascii_digit_mask);
+
+            // group spread digits `YYYY-MM-DD------` into packed digits `YYYYMMDD--------`
+            const __m128i mask = _mm_setr_epi8(
+                0, 1, 2, 3,  // year
+                5, 6,        // month
+                8, 9,        // day
+                -1, -1, -1, -1, -1, -1, -1, -1
+            );
+            const __m128i grouped_integers = _mm_shuffle_epi8(spread_integers, mask);
+
+            // extract values
+            union {
+                char c[8];
+                int64_t i;
+            } value;
+            value.i = _mm_cvtsi128_si64(grouped_integers);
+
+            year = 1000 * value.c[0] + 100 * value.c[1] + 10 * value.c[2] + value.c[3];
+            month = 10 * value.c[4] + value.c[5];
+            day = 10 * value.c[6] + value.c[7];
+            return true;
+        }
+#else
         bool parse(const std::string_view& str)
         {
             using detail::parse_range;
 
             // 1984-10-24
             return parse_range(str, 0, 4, year)
-                && parse_range(str, 5, 7, month)
-                && parse_range(str, 8, 10, day)
+                && parse_range(str, 5, 7, month) && month <= 12
+                && parse_range(str, 8, 10, day) && day <= 31
                 ;
         }
+#endif
 
     public:
         int year = 0;
@@ -336,13 +396,10 @@ namespace simdparse
                 53, 57          // minute
             );
 
-            const __m128i all_ones = _mm_set1_epi8(-1); // 128 bits of 1s
-
             const __m128i too_low = _mm_cmpgt_epi8(lower_bound, characters);
             const __m128i too_high = _mm_cmpgt_epi8(characters, upper_bound);
-            const __m128i out_of_bounds = _mm_or_si128(too_low, too_high);
-            const int within_range = _mm_test_all_zeros(out_of_bounds, all_ones);
-            if (!within_range) {
+            const int out_of_bounds = _mm_movemask_epi8(too_low) | _mm_movemask_epi8(too_high);
+            if (out_of_bounds) {
                 return false;
             }
 
@@ -375,7 +432,7 @@ namespace simdparse
             hour = result[4];
             minute = result[5];
 
-            return detail::parse_range(str, 17, 19, second);
+            return detail::parse_range(str, 17, 19, second) && second < 60;
         }
 
         /** Parses an RFC 3339 date-time string with a fractional part using SIMD instructions. */
@@ -419,13 +476,10 @@ namespace simdparse
                 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57
             );
 
-            const __m256i all_ones = _mm256_set1_epi8(-1); // 256 bits of 1s
-
             const __m256i too_low = _mm256_cmpgt_epi8(lower_bound, characters);
             const __m256i too_high = _mm256_cmpgt_epi8(characters, upper_bound);
-            const __m256i out_of_bounds = _mm256_or_si256(too_low, too_high);
-            const int within_range = _mm256_testz_si256(out_of_bounds, all_ones);
-            if (!within_range) {
+            const int out_of_bounds = _mm256_movemask_epi8(too_low) | _mm256_movemask_epi8(too_high);
+            if (out_of_bounds) {
                 return false;
             }
 
@@ -486,7 +540,7 @@ namespace simdparse
             int16_t result[16];
             _mm256_storeu_si256(reinterpret_cast<__m256i*>(result), values);
 
-            year = result[0] * 100 + result[1];
+            year = 100 * result[0] + result[1];
             month = result[2];
             day = result[3];
             hour = result[4];
@@ -507,15 +561,15 @@ namespace simdparse
             // 1984-10-24 23:59:59
             return parse_range(str, 0, 4, year)
                 && str[4] == '-'
-                && parse_range(str, 5, 7, month)
+                && parse_range(str, 5, 7, month) && month <= 12
                 && str[7] == '-'
-                && parse_range(str, 8, 10, day)
+                && parse_range(str, 8, 10, day) && day <= 31
                 && (str[10] == 'T' || str[10] == ' ')
-                && parse_range(str, 11, 13, hour)
+                && parse_range(str, 11, 13, hour) && hour < 24
                 && str[13] == ':'
-                && parse_range(str, 14, 16, minute)
+                && parse_range(str, 14, 16, minute) && minute < 60
                 && str[16] == ':'
-                && parse_range(str, 17, 19, second)
+                && parse_range(str, 17, 19, second) && second < 60
                 ;
         }
 

@@ -30,16 +30,24 @@ static bool example2()
 int main(int /*argc*/, char* /*argv*/[])
 {
     using simdparse::check_parse;
+    using simdparse::check_fail;
 
     using simdparse::date;
     constexpr auto d = date(1984, 1, 1);
     check_parse("1984-01-01", d);
     check_parse("2024-10-24", date(2024, 10, 24));
+    check_parse("1000-01-01", date(1000, 1, 1));
+    check_fail<date>("YYYY-10-24");
+    check_fail<date>("1984-MM-24");
+    check_fail<date>("1984-10-DD");
+    check_fail<date>("1986-01-99");
+    check_fail<date>("1986-99-01");
 
     using simdparse::datetime;
     using simdparse::tzoffset;
     constexpr auto dt = datetime(1984, 10, 24, 23, 59, 59, tzoffset(tzoffset::east, 1, 0));
     check_parse("1984-10-24 23:59:59+01:00", dt);
+    check_parse("1984-10-24T23:59:59+01:00", dt);
 
     // standard fractional part lengths
     check_parse("1984-01-01 01:02:03.000456789+00:00", datetime(1984, 1, 1, 1, 2, 3, 456789));
@@ -82,6 +90,23 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("0001-01-01 00:00:00", datetime(1, 1, 1, 0, 0, 0, 0));
     check_parse("9999-12-31 23:59:59.999999999Z", (datetime::max)());
 
+    // non-numeric characters in date-time strings
+    check_fail<datetime>("YYYY-10-24 23:59:59+01:00Z");
+    check_fail<datetime>("1984-MM-24 23:59:59+01:00Z");
+    check_fail<datetime>("1984-10-DD 23:59:59+01:00Z");
+
+    // invalid values for year, month, day, hour, minute or second
+    check_fail<datetime>("1984-99-24 23:59:59+01:00Z");
+    check_fail<datetime>("1984-10-99 23:59:59+01:00Z");
+    check_fail<datetime>("1984-10-24 30:59:59+01:00Z");
+    check_fail<datetime>("1984-10-24 23:60:59+01:00Z");
+    check_fail<datetime>("1984-10-24 23:59:60+01:00Z");
+
+    // wrong separators
+    check_fail<datetime>("1984_10_24 23:59:59+01:00Z");
+    check_fail<datetime>("1984-10-24 23_59_59+01:00Z");
+    check_fail<datetime>("1984-10-24 23:59:59_01:00Z");
+
     using simdparse::microtime;
 
     // nanosecond truncation
@@ -103,6 +128,12 @@ int main(int /*argc*/, char* /*argv*/[])
     // extreme year values
     check_parse("1000-01-01 23:59:59", microtime(1000, 1, 1, 23, 59, 59));
     check_parse("9999-12-31 23:59:59", microtime(9999, 12, 31, 23, 59, 59));
+
+    using simdparse::ipv4_addr;
+    check_parse("192.0.2.1", ipv4_addr(192, 0, 2, 1));
+
+    using simdparse::ipv6_addr;
+    check_parse("2001:db8:0:1234:0:567:8:1", ipv6_addr(0x2001, 0xdb8, 0x0, 0x1234, 0x0, 0x567, 0x8, 0x1));
 
     using simdparse::uuid;
     check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", uuid({ 0xf8, 0x1d, 0x4f, 0xae, 0x7d, 0xec, 0x11, 0xd0, 0xa7, 0x65, 0x00, 0xa0, 0xc9, 0x1e, 0x6b, 0xf6 }));
