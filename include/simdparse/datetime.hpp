@@ -1,0 +1,676 @@
+/**
+ * simdparse: High-speed parser with vector instructions
+ * @see https://github.com/hunyadi/simdparse
+ *
+ * Copyright (c) 2024 Levente Hunyadi
+ *
+ * This work is licensed under the terms of the MIT license.
+ * For a copy, see <https://opensource.org/licenses/MIT>.
+ */
+
+#pragma once
+#include <array>
+#include <charconv>
+#include <cstdio>
+#include <ctime>
+#include <string_view>
+
+#if defined(_WIN32) || defined(_WIN64)
+#define timegm _mkgmtime
+#endif
+
+#if defined(__AVX2__)
+#include <immintrin.h>
+#endif
+
+namespace simdparse
+{
+    namespace detail
+    {
+        template<typename T>
+        static bool parse_range(const std::string_view& str, std::size_t beg, std::size_t end, T& val)
+        {
+            return std::from_chars(str.data() + beg, str.data() + end, val).ec == std::errc{};
+        }
+    }
+
+    struct date
+    {
+        constexpr static std::string_view name = "date";
+
+        constexpr date()
+        {}
+
+        /** Construct a date object from parts. */
+        constexpr date(int year, unsigned int month, unsigned int day)
+            : year(year)
+            , month(month)
+            , day(day)
+        {}
+
+        bool operator==(const date& op) const
+        {
+            return year == op.year
+                && month == op.month
+                && day == op.day
+                ;
+        }
+
+        bool operator!=(const date& op) const
+        {
+            return !(*this == op);
+        }
+
+        bool operator<(const date& op) const
+        {
+            return compare(op) < 0;
+        }
+
+        bool operator>(const date& op) const
+        {
+            return compare(op) > 0;
+        }
+
+        int compare(const date& op) const
+        {
+            if (year < op.year) {
+                return -1;
+            } else if (year > op.year) {
+                return 1;
+            }
+
+            if (month < op.month) {
+                return -1;
+            } else if (month > op.month) {
+                return 1;
+            }
+
+            if (day < op.day) {
+                return -1;
+            } else if (day > op.day) {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        bool parse(const std::string_view& str)
+        {
+            using detail::parse_range;
+
+            // 1984-10-24
+            return parse_range(str, 0, 4, year)
+                && parse_range(str, 5, 7, month)
+                && parse_range(str, 8, 10, day)
+                ;
+        }
+
+    public:
+        int year = 0;
+        unsigned int month = 0;
+        unsigned int day = 0;
+    };
+
+    struct tzoffset
+    {
+        struct east_t {};
+        constexpr inline static east_t east;
+        struct west_t {};
+        constexpr inline static west_t west;
+
+        constexpr tzoffset()
+        {}
+
+        constexpr tzoffset(east_t, unsigned int hour, unsigned int minute)
+        {
+            _value = static_cast<int>(60 * hour + minute);
+        }
+
+        constexpr tzoffset(west_t, unsigned int hour, unsigned int minute)
+        {
+            _value = -static_cast<int>(60 * hour + minute);
+        }
+
+        bool operator==(const tzoffset& op) const
+        {
+            return _value == op._value;
+        }
+
+        bool operator!=(const tzoffset& op) const
+        {
+            return _value != op._value;
+        }
+
+        int minutes() const
+        {
+            return _value;
+        }
+
+        void assign(int minutes)
+        {
+            _value = minutes;
+        }
+
+        bool parse(const std::string_view& str)
+        {
+            using detail::parse_range;
+
+            // -01:30
+            unsigned int hour;
+            unsigned int minute;
+            if (!parse_range(str, 1, 3, hour) || str[3] != ':' || !parse_range(str, 4, 6, minute)) {
+                return false;
+            }
+
+            int sign = (str[0] == '+') - (str[0] == '-');
+            _value = sign * (60 * hour + minute);
+            return sign != 0;
+        }
+
+    private:
+        int _value = 0;
+    };
+
+    struct datetime
+    {
+        constexpr static std::string_view name = "date-time";
+
+        constexpr datetime()
+        {}
+
+        /** Construct a date-time object from parts. */
+        constexpr datetime(
+            int year,
+            unsigned int month,
+            unsigned int day,
+            unsigned int hour,
+            unsigned int minute,
+            unsigned int second,
+            tzoffset offset = tzoffset()
+        )
+            : year(year)
+            , month(month)
+            , day(day)
+            , hour(hour)
+            , minute(minute)
+            , second(second)
+            , offset(offset)
+        {}
+
+        /** Construct a date-time object from parts. */
+        constexpr datetime(
+            int year,
+            unsigned int month,
+            unsigned int day,
+            unsigned int hour,
+            unsigned int minute,
+            unsigned int second,
+            unsigned long nanosecond,
+            tzoffset offset = tzoffset()
+        )
+            : year(year)
+            , month(month)
+            , day(day)
+            , hour(hour)
+            , minute(minute)
+            , second(second)
+            , nanosecond(nanosecond)
+            , offset(offset)
+        {}
+
+        bool operator==(const datetime& op) const
+        {
+            return year == op.year
+                && month == op.month
+                && day == op.day
+                && hour == op.hour
+                && minute == op.minute
+                && second == op.second
+                && nanosecond == op.nanosecond
+                && offset == op.offset
+                ;
+        }
+
+        static constexpr datetime zero()
+        {
+            return datetime();
+        }
+
+        static constexpr datetime max()
+        {
+            return datetime(9999, 12, 31, 23, 59, 59, 999999999);
+        }
+
+        bool operator!=(const datetime& op) const
+        {
+            return !(*this == op);
+        }
+
+        /** Parses a date-time string with an optional time zone offset. */
+        bool parse(const std::string_view& str)
+        {
+            if (str.size() < 19 || str.size() > 35) {
+                return false;
+            }
+
+            if (str.back() == 'Z') {
+                // 1984-10-24 23:59:59.123456789Z
+                // 1984-10-24 23:59:59.123456Z
+                // 1984-10-24 23:59:59.123Z
+                // 1984-10-24 23:59:59Z
+                if (!parse_naive_date_time(str.substr(0, str.size() - 1))) {
+                    return false;
+                }
+                offset = tzoffset();
+                return true;
+            }
+
+            char offset_sign = str[str.size() - 6];
+            if (offset_sign == '+' || offset_sign == '-') {
+                // 1984-10-24 23:59:59.123456789+00:00
+                // 1984-10-24 23:59:59.123456+00:00
+                // 1984-10-24 23:59:59.123+00:00
+                // 1984-10-24 23:59:59+00:00
+                if (!parse_naive_date_time(str.substr(0, str.size() - 6))) {
+                    return false;
+                }
+                if (!offset.parse(str.substr(str.size() - 6, 6))) {
+                    return false;
+                }
+                return true;
+            }
+
+            if (std::memcmp(" UTC", str.data() + str.size() - 4, 4) == 0) {
+                // 1984-10-24 23:59:59 UTC
+                if (!parse_naive_date_time(str.substr(0, str.size() - 4))) {
+                    return false;
+                }
+                offset = tzoffset();
+                return true;
+            } else {
+                // 1984-10-24 23:59:59.123456789
+                // 1984-10-24 23:59:59.123456
+                // 1984-10-24 23:59:59.123
+                // 1984-10-24 23:59:59
+                if (!parse_naive_date_time(str)) {
+                    return false;
+                }
+                offset = tzoffset();
+                return true;
+            }
+        }
+
+    private:
+
+#if defined(__AVX2__)
+        /**
+         * Parses an RFC 3339 date-time string with SIMD instructions.
+         *
+         * @see https://movermeyer.com/2023-01-04-rfc-3339-simd/
+         */
+        bool parse_date_time(const std::string_view& str)
+        {
+            const __m128i characters = _mm_loadu_si128(reinterpret_cast<const __m128i*>(str.data()));
+
+            // validate a 16-byte partial date-time string `YYYY-MM-DDThh:mm`
+            const __m128i lower_bound = _mm_setr_epi8(
+                48, 48, 48, 48, // year; 48 = ASCII '0'
+                45,             // ASCII '-'
+                48, 48,         // month
+                45,             // ASCII '-'
+                48, 48,         // day
+                32,             // ASCII ' '
+                48, 48,         // hour
+                58,             // ASCII ':'
+                48, 48          // minute
+            );
+            const __m128i upper_bound = _mm_setr_epi8(
+                57, 57, 57, 57, // year; 57 = ASCII '9'
+                45,             // ASCII '-'
+                49, 57,         // month
+                45,             // ASCII '-'
+                51, 57,         // day
+                84,             // ASCII 'T'
+                50, 57,         // hour
+                58,             // ASCII ':'
+                53, 57          // minute
+            );
+
+            const __m128i all_ones = _mm_set1_epi8(-1); // 128 bits of 1s
+
+            const __m128i too_low = _mm_cmpgt_epi8(lower_bound, characters);
+            const __m128i too_high = _mm_cmpgt_epi8(characters, upper_bound);
+            const __m128i out_of_bounds = _mm_or_si128(too_low, too_high);
+            const int within_range = _mm_test_all_zeros(out_of_bounds, all_ones);
+            if (!within_range) {
+                return false;
+            }
+
+            // convert ASCII characters into digit value (offset from character `0`)
+            const __m128i ascii_digit_mask = _mm_setr_epi8(15, 15, 15, 15, 0, 15, 15, 0, 15, 15, 0, 15, 15, 0, 15, 15); // 15 = 0x0F
+            const __m128i spread_integers = _mm_and_si128(characters, ascii_digit_mask);
+
+            // group spread digits `YYYY-MM-DD hh:mm` into packed digits `YYYYMMDDhhmm----`
+            const __m128i mask = _mm_setr_epi8(
+                0, 1, 2, 3,  // year
+                5, 6,        // month
+                8, 9,        // day
+                11, 12,      // hour
+                14, 15,      // minute
+                -1, -1, -1, -1
+            );
+            const __m128i packed_integers = _mm_shuffle_epi8(spread_integers, mask);
+
+            // fuse neighboring digits into a single value
+            const __m128i weights = _mm_setr_epi8(10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 0, 0, 0, 0);
+            const __m128i values = _mm_maddubs_epi16(packed_integers, weights);
+
+            // extract values
+            int16_t result[8];
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(result), values);
+
+            year = (result[0] * 100) + result[1];
+            month = result[2];
+            day = result[3];
+            hour = result[4];
+            minute = result[5];
+
+            return detail::parse_range(str, 17, 19, second);
+        }
+
+        /** Parses an RFC 3339 date-time string with a fractional part using SIMD instructions. */
+        bool parse_date_time_fractional(const std::string_view& str)
+        {
+            char buf[32];
+            std::memcpy(buf, str.data(), str.size());
+            std::memset(buf + str.size(), '0', 32 - str.size());
+
+            const __m256i characters = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(buf));
+
+            // validate a 32-byte partial date-time string `YYYY-MM-DDThh:mm:ss.fffffffff---`
+            const __m256i lower_bound = _mm256_setr_epi8(
+                48, 48, 48, 48, // year; 48 = ASCII '0'
+                45,             // ASCII '-'
+                48, 48,         // month
+                45,             // ASCII '-'
+                48, 48,         // day
+                32,             // ASCII ' '
+                48, 48,         // hour
+                58,             // ASCII ':'
+                48, 48,         // minute
+                58,             // ASCII ':'
+                48, 48,         // second
+                46,             // ASCII '.'
+                48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48
+            );
+            const __m256i upper_bound = _mm256_setr_epi8(
+                57, 57, 57, 57, // year; 57 = ASCII '9'
+                45,             // ASCII '-'
+                49, 57,         // month
+                45,             // ASCII '-'
+                51, 57,         // day
+                84,             // ASCII 'T'
+                50, 57,         // hour
+                58,             // ASCII ':'
+                53, 57,         // minute
+                58,             // ASCII ':'
+                53, 57,         // second
+                46,             // ASCII '.'
+                57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57, 57
+            );
+
+            const __m256i all_ones = _mm256_set1_epi8(-1); // 256 bits of 1s
+
+            const __m256i too_low = _mm256_cmpgt_epi8(lower_bound, characters);
+            const __m256i too_high = _mm256_cmpgt_epi8(characters, upper_bound);
+            const __m256i out_of_bounds = _mm256_or_si256(too_low, too_high);
+            const int within_range = _mm256_testz_si256(out_of_bounds, all_ones);
+            if (!within_range) {
+                return false;
+            }
+
+            // convert ASCII characters into digit value (offset from character `0`)
+            const __m256i ascii_digit_mask = _mm256_setr_epi8(
+                15, 15, 15, 15,  // year
+                0,
+                15, 15,          // month
+                0,
+                15, 15,          // day
+                0,
+                15, 15,          // hour
+                0,
+                15, 15,          // minute
+                0,
+                15, 15,          // second
+                0,
+                15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15
+            );
+            const __m256i spread_integers = _mm256_and_si256(characters, ascii_digit_mask);
+
+            // group spread digits `YYYY-MM-DD hh:mm:ss.fffffffff---` into packed digits `YYYYMMDDhhmm----ss-fff-fff-fff--`
+            const __m256i mask = _mm256_setr_epi8(
+                0, 1, 2, 3,  // year
+                5, 6,        // month
+                8, 9,        // day
+                11, 12,      // hour
+                14, 15,      // minute
+                -1, -1, -1, -1,
+                1, 2,        // second
+                -1,
+                4, 5, 6,     // millisecond range
+                -1,
+                7, 8, 9,     // microsecond range
+                -1,
+                10, 11, 12,  // nanosecond range
+                -1, -1
+            );
+            const __m256i packed_integers = _mm256_shuffle_epi8(spread_integers, mask);
+
+            // fuse neighboring digits into a single value
+            const __m256i weights = _mm256_setr_epi8(
+                10, 1, 10, 1,   // year
+                10, 1,          // month
+                10, 1,          // day
+                10, 1,          // hour
+                10, 1,          // minute
+                0, 0, 0, 0,
+                10, 1,          // second
+                0, 100, 10, 1,  // millisecond range
+                0, 100, 10, 1,  // microsecond range
+                0, 100, 10, 1,  // nanosecond range
+                0, 0
+            );
+            const __m256i values = _mm256_maddubs_epi16(packed_integers, weights);
+
+            // extract values
+            int16_t result[16];
+            _mm256_storeu_si256(reinterpret_cast<__m256i*>(result), values);
+
+            year = result[0] * 100 + result[1];
+            month = result[2];
+            day = result[3];
+            hour = result[4];
+            minute = result[5];
+            second = result[8];
+            unsigned int milli = result[9] + result[10];
+            unsigned int micro = result[11] + result[12];
+            unsigned int nano = result[13] + result[14];
+            nanosecond = 1'000'000ull * milli + 1'000ull * micro + nano;
+            return true;
+        }
+#else
+        /** Parses an RFC 3339 date-time string. */
+        bool parse_date_time(const std::string_view& str)
+        {
+            using detail::parse_range;
+
+            // 1984-10-24 23:59:59
+            return parse_range(str, 0, 4, year)
+                && str[4] == '-'
+                && parse_range(str, 5, 7, month)
+                && str[7] == '-'
+                && parse_range(str, 8, 10, day)
+                && (str[10] == 'T' || str[10] == ' ')
+                && parse_range(str, 11, 13, hour)
+                && str[13] == ':'
+                && parse_range(str, 14, 16, minute)
+                && str[16] == ':'
+                && parse_range(str, 17, 19, second)
+                ;
+        }
+
+        /** Parses an RFC 3339 date-time string with a fractional part. */
+        bool parse_date_time_fractional(const std::string_view& str)
+        {
+            return parse_date_time(str.substr(0, 19))
+                && str[19] == '.'
+                && parse_fractional(str.substr(20))
+                ;
+        }
+#endif
+
+        /** Parses an RFC 3339 date-time string without time zone offset. */
+        bool parse_naive_date_time(const std::string_view& str)
+        {
+            if (str.size() > 19) {
+                return parse_date_time_fractional(str);
+            } else {
+                return parse_date_time(str);
+            }
+        }
+
+        /** Parses the fractional part of a date-time string. */
+        bool parse_fractional(const std::string_view& str)
+        {
+            constexpr static std::array<unsigned long, 9> powers = {
+                1, 10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000
+            };
+            unsigned long fractional;
+            if (!detail::parse_range(str, 0, str.size(), fractional)) {
+                return false;
+            }
+            unsigned long scale = powers[9 - str.size()];
+            nanosecond = scale * fractional;
+            return true;
+        }
+
+    public:
+        int year = 0;
+        unsigned int month = 0;
+        unsigned int day = 0;
+        unsigned int hour = 0;
+        unsigned int minute = 0;
+        unsigned int second = 0;
+        unsigned long nanosecond = 0;
+        tzoffset offset;
+    };
+
+    /** A timestamp with microsecond precision. */
+    struct microtime
+    {
+        constexpr static std::string_view name = "timestamp with microsecond precision";
+
+        microtime() = default;
+
+        explicit microtime(int64_t ms)
+            : _value(ms)
+        {}
+
+        /** Construct a timestamp from parts. */
+        microtime(
+            int year,
+            unsigned int month,
+            unsigned int day,
+            unsigned int hour,
+            unsigned int minute,
+            unsigned int second,
+            tzoffset offset = tzoffset()
+        )
+        {
+            assign(year, month, day, hour, minute, second, 0, offset);
+        }
+
+        /** Construct a timestamp from parts. */
+        microtime(
+            int year,
+            unsigned int month,
+            unsigned int day,
+            unsigned int hour,
+            unsigned int minute,
+            unsigned int second,
+            unsigned long microsecond,
+            tzoffset offset = tzoffset()
+        )
+        {
+            assign(year, month, day, hour, minute, second, microsecond, offset);
+        }
+
+        bool operator==(const microtime& op) const
+        {
+            return _value == op._value;
+        }
+
+        bool operator!=(const microtime& op) const
+        {
+            return _value != op._value;
+        }
+
+        bool operator<(const microtime& op) const
+        {
+            return _value < op._value;
+        }
+
+        bool operator>(const microtime& op) const
+        {
+            return _value > op._value;
+        }
+
+        /** Microseconds fractional part of timestamp. */
+        unsigned long microseconds() const
+        {
+            auto v = _value > 0 ? _value : -_value;
+            return static_cast<unsigned long>(v % 1'000'000);
+        }
+
+        /** The date and time component of the timestamp, up to seconds precision. */
+        std::time_t as_time() const
+        {
+            return static_cast<std::time_t>(_value / 1'000'000);
+        }
+
+        void assign(int year, unsigned int month, unsigned int day, unsigned int hour, unsigned int minute, unsigned int second, unsigned long microsecond, const tzoffset& offset)
+        {
+            std::tm ts{};
+            ts.tm_year = year - 1900;
+            ts.tm_mon = month - 1;
+            ts.tm_mday = day;
+            ts.tm_hour = hour - offset.minutes() / 60;
+            ts.tm_min = minute - offset.minutes() % 60;
+            ts.tm_sec = second;
+            ts.tm_isdst = 0;
+            errno = 0;
+            std::time_t t = timegm(&ts);
+            if (!errno) {
+                _value = t;
+                _value *= 1'000'000;
+                _value += microsecond;
+            } else {
+                _value = ~static_cast<int64_t>(0);
+            }
+        }
+
+        bool parse(const std::string_view& str)
+        {
+            datetime dt;
+            if (!dt.parse(str)) {
+                return false;
+            }
+            assign(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.nanosecond / 1'000, dt.offset);
+            return true;
+        }
+
+    private:
+        /** Microseconds before/after epoch. */
+        int64_t _value = ~static_cast<int64_t>(0);
+    };
+}
