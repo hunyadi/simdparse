@@ -75,19 +75,22 @@ namespace simdparse
         {
             if (year < op.year) {
                 return -1;
-            } else if (year > op.year) {
+            }
+            else if (year > op.year) {
                 return 1;
             }
 
             if (month < op.month) {
                 return -1;
-            } else if (month > op.month) {
+            }
+            else if (month > op.month) {
                 return 1;
             }
 
             if (day < op.day) {
                 return -1;
-            } else if (day > op.day) {
+            }
+            else if (day > op.day) {
                 return 1;
             }
 
@@ -224,7 +227,7 @@ namespace simdparse
 
             int sign = (str[0] == '+') - (str[0] == '-');
             _value = sign * (60 * hour + minute);
-            return sign != 0;
+            return sign != 0 && minute < 60;
         }
 
     private:
@@ -347,7 +350,8 @@ namespace simdparse
                 }
                 offset = tzoffset();
                 return true;
-            } else {
+            }
+            else {
                 // 1984-10-24 23:59:59.123456789
                 // 1984-10-24 23:59:59.123456
                 // 1984-10-24 23:59:59.123
@@ -588,7 +592,8 @@ namespace simdparse
         {
             if (str.size() > 19) {
                 return parse_date_time_fractional(str);
-            } else {
+            }
+            else {
                 return parse_date_time(str);
             }
         }
@@ -708,7 +713,8 @@ namespace simdparse
                 _value = t;
                 _value *= 1'000'000;
                 _value += microsecond;
-            } else {
+            }
+            else {
                 _value = ~static_cast<int64_t>(0);
             }
         }

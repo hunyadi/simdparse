@@ -94,6 +94,22 @@ namespace simdparse
             : _addr(addr)
         {}
 
+        constexpr ipv6_addr(uint64_t a, uint64_t b)
+            : _addr{
+                static_cast<uint8_t>((a >> 56) & 0xff), static_cast<uint8_t>((a >> 48) & 0xff), static_cast<uint8_t>((a >> 40) & 0xff), static_cast<uint8_t>((a >> 32) & 0xff),
+                static_cast<uint8_t>((a >> 24) & 0xff), static_cast<uint8_t>((a >> 16) & 0xff), static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
+                static_cast<uint8_t>((b >> 56) & 0xff), static_cast<uint8_t>((b >> 48) & 0xff), static_cast<uint8_t>((b >> 40) & 0xff), static_cast<uint8_t>((b >> 32) & 0xff),
+                static_cast<uint8_t>((b >> 24) & 0xff), static_cast<uint8_t>((b >> 16) & 0xff), static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff) }
+        {}
+
+        constexpr ipv6_addr(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+            : _addr{
+                static_cast<uint8_t>((a >> 24) & 0xff), static_cast<uint8_t>((a >> 16) & 0xff), static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
+                static_cast<uint8_t>((b >> 24) & 0xff), static_cast<uint8_t>((b >> 16) & 0xff), static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff),
+                static_cast<uint8_t>((c >> 24) & 0xff), static_cast<uint8_t>((c >> 16) & 0xff), static_cast<uint8_t>((c >> 8) & 0xff), static_cast<uint8_t>(c & 0xff),
+                static_cast<uint8_t>((d >> 24) & 0xff), static_cast<uint8_t>((d >> 16) & 0xff), static_cast<uint8_t>((d >> 8) & 0xff), static_cast<uint8_t>(d & 0xff) }
+        {}
+
         constexpr ipv6_addr(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h)
             : _addr{
                 static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),

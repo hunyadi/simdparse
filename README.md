@@ -117,6 +117,7 @@ hh:mm:ss.fffffffffZ
 ### UUID format
 
 ```
+{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}
 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```

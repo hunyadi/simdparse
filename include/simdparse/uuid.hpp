@@ -55,9 +55,27 @@ namespace simdparse
     {
         constexpr static std::string_view name = "UUID";
 
-        uuid() = default;
-        uuid(std::array<uint8_t, 16> a)
+        constexpr uuid()
+        {}
+
+        constexpr uuid(const std::array<uint8_t, 16>& a)
             : _id(a)
+        {}
+
+        constexpr uuid(uint64_t a, uint64_t b)
+            : _id{
+                static_cast<uint8_t>((a >> 56) & 0xff), static_cast<uint8_t>((a >> 48) & 0xff), static_cast<uint8_t>((a >> 40) & 0xff), static_cast<uint8_t>((a >> 32) & 0xff),
+                static_cast<uint8_t>((a >> 24) & 0xff), static_cast<uint8_t>((a >> 16) & 0xff), static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
+                static_cast<uint8_t>((b >> 56) & 0xff), static_cast<uint8_t>((b >> 48) & 0xff), static_cast<uint8_t>((b >> 40) & 0xff), static_cast<uint8_t>((b >> 32) & 0xff),
+                static_cast<uint8_t>((b >> 24) & 0xff), static_cast<uint8_t>((b >> 16) & 0xff), static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff) }
+        {}
+
+        constexpr uuid(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+            : _id{
+                static_cast<uint8_t>((a >> 24) & 0xff), static_cast<uint8_t>((a >> 16) & 0xff), static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
+                static_cast<uint8_t>((b >> 24) & 0xff), static_cast<uint8_t>((b >> 16) & 0xff), static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff),
+                static_cast<uint8_t>((c >> 24) & 0xff), static_cast<uint8_t>((c >> 16) & 0xff), static_cast<uint8_t>((c >> 8) & 0xff), static_cast<uint8_t>(c & 0xff),
+                static_cast<uint8_t>((d >> 24) & 0xff), static_cast<uint8_t>((d >> 16) & 0xff), static_cast<uint8_t>((d >> 8) & 0xff), static_cast<uint8_t>(d & 0xff) }
         {}
 
         const uint8_t* data() const
@@ -97,9 +115,13 @@ namespace simdparse
          */
         bool parse(const std::string_view& str)
         {
-            if (str.size() == 36) {
+            if (str.size() == 38) {  // skip opening and closing curly braces
+                return parse_uuid_rfc_4122(str.data() + 1);
+            }
+            else if (str.size() == 36) {
                 return parse_uuid_rfc_4122(str.data());
-            } else if (str.size() == 32) {
+            }
+            else if (str.size() == 32) {
                 return parse_uuid_compact(str.data());
             }
             return false;
@@ -129,12 +151,18 @@ namespace simdparse
          */
         bool parse_uuid_rfc_4122(const char* str)
         {
-            // Remove dashes and pack hexadecimal ASCII bytes in a 256-bit integer
             const __m256i dash_shuffle = _mm256_set_epi32(0x80808080, 0x0f0e0d0c, 0x0b0a0908, 0x06050403, 0x80800f0e, 0x0c0b0a09, 0x07060504, 0x03020100);
 
+            // remove dashes and pack hexadecimal ASCII bytes in a 256-bit integer
+            // lane 1: 01234567-89ab-cd -> 0123456789abcd--
+            // lane 2: ef-0123-456789ab -> 0123456789ab----
             __m256i x = _mm256_loadu_si256((__m256i*)str);
             x = _mm256_shuffle_epi8(x, dash_shuffle);
+
+            // insert characters omitted
+            // lane 1: ef               -> 0123456789abcdef
             x = _mm256_insert_epi16(x, *(uint16_t*)(str + 16), 7);
+            // lane 2: cdef             -> 0123456789abcdef
             x = _mm256_insert_epi32(x, *(uint32_t*)(str + 32), 7);
 
             _mm_storeu_si128(reinterpret_cast<__m128i*>(_id.data()), detail::parse_uuid(x));
@@ -177,6 +205,6 @@ namespace simdparse
 #endif
 
     private:
-        std::array<uint8_t, 16> _id;
+        std::array<uint8_t, 16> _id = { 0 };
     };
 }

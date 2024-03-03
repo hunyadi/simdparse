@@ -10,7 +10,8 @@ static bool example1()
     datetime obj;
     if (parse(obj, str)) {
         return true;
-    } else {
+    }
+    else {
         return false;
     }
 }
@@ -33,7 +34,7 @@ int main(int /*argc*/, char* /*argv*/[])
     using simdparse::check_fail;
 
     using simdparse::date;
-    constexpr auto d = date(1984, 1, 1);
+    constexpr date d(1984, 1, 1);
     check_parse("1984-01-01", d);
     check_parse("2024-10-24", date(2024, 10, 24));
     check_parse("1000-01-01", date(1000, 1, 1));
@@ -45,7 +46,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     using simdparse::datetime;
     using simdparse::tzoffset;
-    constexpr auto dt = datetime(1984, 10, 24, 23, 59, 59, tzoffset(tzoffset::east, 1, 0));
+    constexpr datetime dt(1984, 10, 24, 23, 59, 59, tzoffset(tzoffset::east, 1, 0));
     check_parse("1984-10-24 23:59:59+01:00", dt);
     check_parse("1984-10-24T23:59:59+01:00", dt);
 
@@ -91,21 +92,29 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("9999-12-31 23:59:59.999999999Z", (datetime::max)());
 
     // non-numeric characters in date-time strings
-    check_fail<datetime>("YYYY-10-24 23:59:59+01:00Z");
-    check_fail<datetime>("1984-MM-24 23:59:59+01:00Z");
-    check_fail<datetime>("1984-10-DD 23:59:59+01:00Z");
+    check_fail<datetime>("YYYY-10-24 23:59:59Z");
+    check_fail<datetime>("1984-MM-24 23:59:59Z");
+    check_fail<datetime>("1984-10-DD 23:59:59Z");
+    check_fail<datetime>("1984-10-24 hh:59:59Z");
+    check_fail<datetime>("1984-10-24 23:mm:59Z");
+    check_fail<datetime>("1984-10-24 23:59:ssZ");
+    check_fail<datetime>("1984-10-24 23:59:59+hh:00");
+    check_fail<datetime>("1984-10-24 23:59:59+00:mm");
+    check_fail<datetime>("1984-10-24 23:59:59.ffffffZ");
 
     // invalid values for year, month, day, hour, minute or second
-    check_fail<datetime>("1984-99-24 23:59:59+01:00Z");
-    check_fail<datetime>("1984-10-99 23:59:59+01:00Z");
-    check_fail<datetime>("1984-10-24 30:59:59+01:00Z");
-    check_fail<datetime>("1984-10-24 23:60:59+01:00Z");
-    check_fail<datetime>("1984-10-24 23:59:60+01:00Z");
+    check_fail<datetime>("1984-99-24 23:59:59Z");
+    check_fail<datetime>("1984-10-99 23:59:59Z");
+    check_fail<datetime>("1984-10-24 30:59:59Z");
+    check_fail<datetime>("1984-10-24 23:60:59Z");
+    check_fail<datetime>("1984-10-24 23:59:60Z");
+    check_fail<datetime>("1984-10-24 23:59:59-01:60");
+    check_fail<datetime>("1984-10-24 23:59:59+01:99");
 
     // wrong separators
-    check_fail<datetime>("1984_10_24 23:59:59+01:00Z");
-    check_fail<datetime>("1984-10-24 23_59_59+01:00Z");
-    check_fail<datetime>("1984-10-24 23:59:59_01:00Z");
+    check_fail<datetime>("1984_10_24 23:59:59Z");
+    check_fail<datetime>("1984-10-24 23_59_59Z");
+    check_fail<datetime>("1984-10-24 23:59:59_01:00");
 
     using simdparse::microtime;
 
@@ -130,14 +139,30 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("9999-12-31 23:59:59", microtime(9999, 12, 31, 23, 59, 59));
 
     using simdparse::ipv4_addr;
-    check_parse("192.0.2.1", ipv4_addr(192, 0, 2, 1));
+    constexpr ipv4_addr sample_ipv4(192, 0, 2, 1);
+    check_parse("192.0.2.1", sample_ipv4);
 
     using simdparse::ipv6_addr;
-    check_parse("2001:db8:0:1234:0:567:8:1", ipv6_addr(0x2001, 0xdb8, 0x0, 0x1234, 0x0, 0x567, 0x8, 0x1));
+    constexpr ipv6_addr sample_ipv6(0x2001, 0xdb8, 0x0, 0x1234, 0x0, 0x567, 0x8, 0x1);
+    if (sample_ipv6 != ipv6_addr(0x20010db8, 0x00001234, 0x00000567, 0x00080001)) {
+        throw std::runtime_error("IPv6 operands are not equal");
+    }
+    if (sample_ipv6 != ipv6_addr(0x20010db800001234, 0x0000056700080001)) {
+        throw std::runtime_error("IPv6 operands are not equal");
+    }
+    check_parse("2001:db8:0:1234:0:567:8:1", sample_ipv6);
 
     using simdparse::uuid;
-    check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", uuid({ 0xf8, 0x1d, 0x4f, 0xae, 0x7d, 0xec, 0x11, 0xd0, 0xa7, 0x65, 0x00, 0xa0, 0xc9, 0x1e, 0x6b, 0xf6 }));
-    check_parse("f81d4fae7dec11d0a76500a0c91e6bf6", uuid({ 0xf8, 0x1d, 0x4f, 0xae, 0x7d, 0xec, 0x11, 0xd0, 0xa7, 0x65, 0x00, 0xa0, 0xc9, 0x1e, 0x6b, 0xf6 }));
+    constexpr uuid sample_uuid({ 0xf8, 0x1d, 0x4f, 0xae, 0x7d, 0xec, 0x11, 0xd0, 0xa7, 0x65, 0x00, 0xa0, 0xc9, 0x1e, 0x6b, 0xf6 });
+    if (sample_uuid != uuid(0xf81d4fae, 0x7dec11d0, 0xa76500a0, 0xc91e6bf6)) {
+        throw std::runtime_error("UUID operands are not equal");
+    }
+    if (sample_uuid != uuid(0xf81d4fae7dec11d0, 0xa76500a0c91e6bf6)) {
+        throw std::runtime_error("UUID operands are not equal");
+    }
+    check_parse("{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", sample_uuid);
+    check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
+    check_parse("f81d4fae7dec11d0a76500a0c91e6bf6", sample_uuid);
 
     // test code examples
     if (!example1() || !example2()) {
