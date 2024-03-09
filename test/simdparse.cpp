@@ -1,4 +1,5 @@
 #include <simdparse/datetime.hpp>
+#include <simdparse/integer.hpp>
 #include <simdparse/ipaddr.hpp>
 #include <simdparse/uuid.hpp>
 #include <simdparse/parse.hpp>
@@ -22,6 +23,7 @@ static bool example2()
     std::string str = "1984-10-24 23:59:59.123";
     try {
         auto obj = parse<datetime>(str);
+        (void)obj;
     } catch (parse_error&) {
         return false;
     }
@@ -34,8 +36,10 @@ int main(int /*argc*/, char* /*argv*/[])
     using simdparse::check_fail;
 
     using simdparse::date;
-    constexpr date d(1984, 1, 1);
-    check_parse("1984-01-01", d);
+    constexpr date d1(1984, 1, 1);
+    constexpr date d2(1982, 9, 23);
+    static_assert(d1 > d2 && d2 < d1 && d1 != d2 && !(d1 == d2));
+    check_parse("1984-01-01", d1);
     check_parse("2024-10-24", date(2024, 10, 24));
     check_parse("1000-01-01", date(1000, 1, 1));
     check_fail<date>("YYYY-10-24");
@@ -163,6 +167,29 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", sample_uuid);
     check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
     check_parse("f81d4fae7dec11d0a76500a0c91e6bf6", sample_uuid);
+
+    using simdparse::integer;
+    constexpr integer i1 = integer(56);
+    constexpr integer i2 = integer(84);
+    static_assert(i1 < i2 && i2 > i1 && i1 != i2 && !(i1 == i2));
+
+    check_parse("0", integer(0));
+    check_parse("1", integer(1));
+    check_parse("12", integer(12));
+    check_parse("123", integer(123));
+    check_parse("1234", integer(1234));
+    check_parse("12345", integer(12345));
+    check_parse("123456", integer(123456));
+    check_parse("1234567", integer(1234567));
+    check_parse("12345678", integer(12345678));
+    check_parse("123456789", integer(123456789));
+    check_parse("1234567890", integer(1234567890));
+    check_parse("1234567812345678", integer(1234567812345678ull));
+    check_parse("123456781234567812", integer(123456781234567812ull));
+    check_parse("12345678123456781234", integer(12345678123456781234ull));
+    check_fail<integer>("-1");
+    check_fail<integer>("0xab");
+    check_fail<integer>("ff");
 
     // test code examples
     if (!example1() || !example2()) {

@@ -90,22 +90,22 @@ namespace simdparse
 
         bool operator==(const uuid& op) const
         {
-            return compare(op) == 0;
+            return _id == op._id;
         }
 
         bool operator!=(const uuid& op) const
         {
-            return compare(op) != 0;
+            return _id != op._id;
         }
 
         bool operator<(const uuid& op) const
         {
-            return compare(op) < 0;
+            return _id < op._id;
         }
 
         bool operator>(const uuid& op) const
         {
-            return compare(op) > 0;
+            return _id > op._id;
         }
 
         /**
@@ -125,12 +125,6 @@ namespace simdparse
                 return parse_uuid_compact(str.data());
             }
             return false;
-        }
-
-    private:
-        int compare(const uuid& op) const
-        {
-            return std::memcmp(_id.data(), op._id.data(), _id.size());
         }
 
 #if defined(__AVX2__)

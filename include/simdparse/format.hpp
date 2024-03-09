@@ -16,6 +16,11 @@
 
 namespace simdparse
 {
+    inline std::string to_string(const integer& i)
+    {
+        return std::to_string(i.value);
+    }
+
     inline std::string to_string(const ipv4_addr& addr)
     {
         char addr_str[INET_ADDRSTRLEN];

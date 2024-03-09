@@ -30,7 +30,9 @@ namespace simdparse
         template<typename T>
         static bool parse_range(const std::string_view& str, std::size_t beg, std::size_t end, T& val)
         {
-            return std::from_chars(str.data() + beg, str.data() + end, val).ec == std::errc{};
+            std::from_chars_result result = std::from_chars(str.data() + beg, str.data() + end, val);
+            return result.ec == std::errc{} && result.ptr == str.data() + end;
+
         }
     }
 
@@ -48,7 +50,7 @@ namespace simdparse
             , day(day)
         {}
 
-        bool operator==(const date& op) const
+        constexpr bool operator==(const date& op) const
         {
             return year == op.year
                 && month == op.month
@@ -56,22 +58,22 @@ namespace simdparse
                 ;
         }
 
-        bool operator!=(const date& op) const
+        constexpr bool operator!=(const date& op) const
         {
             return !(*this == op);
         }
 
-        bool operator<(const date& op) const
+        constexpr bool operator<(const date& op) const
         {
             return compare(op) < 0;
         }
 
-        bool operator>(const date& op) const
+        constexpr bool operator>(const date& op) const
         {
             return compare(op) > 0;
         }
 
-        int compare(const date& op) const
+        constexpr int compare(const date& op) const
         {
             if (year < op.year) {
                 return -1;
