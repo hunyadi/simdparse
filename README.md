@@ -2,6 +2,7 @@
 
 This header-only C++ library parses character strings into objects with efficient storage, including
 
+* long integers,
 * date and time objects, consisting of year, month, day, hour, minute, second and fractional parts (millisecond, microsecond and nanosecond),
 * IPv4 and IPv6 addresses,
 * UUIDs.
@@ -12,6 +13,7 @@ Parsing employs a single instruction multiple data (SIMD) approach, operating on
 
 Internally, the implementation uses AVX2 vector instructions (intrinsics) to
 
+* parse strings of decimal and hexadecimal digits into a C++ `unsigned long long`,
 * parse RFC 3339 date-time strings into C++ `datetime` objects (consisting of year, month, day, hour, minute, second and fractional part), and
 * parse RFC 4122 UUID strings or 32-digit hexadecimal strings into C++ `uuid` objects (stored internally as a 16-byte array).
 
@@ -59,6 +61,10 @@ You should enable the AVX2 instruction set to make full use of the library capab
 The code is looking at whether the macro `__AVX2__` is defined.
 
 ## Supported formats
+
+### Integers
+
+Strings of decimal digits (without sign) or hexadecimal digits that fit into a C++ `unsigned long long` (when parsed).
 
 ### Date-time format
 
@@ -123,6 +129,47 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ## Implementation
+
+### Integers
+
+To parse integers, we first copy the string of digits, right-aligned, into an internal buffer of 16 bytes pre-populated with `0` digits. The following ASCII character data is stored:
+
+```
+'0' ... '0' '1' '2' '3' '4' '5' '6' '7' '8' '9'
+```
+
+The buffer is then read into a `__m128i` register.
+
+Next, each character is checked against a lower bound of `'0'` and an upper bound of `'9'`. If any character is outside the bounds, parsing fails.
+
+Then, each character is converted into their numeric 8-bit equivalent:
+
+```
+ 0  0  0  0  0  0  0  1  2  3  4  5  6  7  8  9
+```
+
+With the help of a weighting vector, we multiply each odd position with 10 (and leave each even position as-is), and add members of consecutive 8-bit integer pairs to produce 16-bit integers:
+
+```
+ 0  0  0  0  0  0  0  1  2  3  4  5  6  7  8  9
+10  1 10  1 10  1 10  1 10  1 10  1 10  1 10  1
+-----------------------------------------------
+    0     0     0     1    23    45    67    89
+```
+
+Next, we repeat the procedure, merging 16-bit integers into 32-bit integers:
+
+```
+    0     0     0     1    23    45    67    89
+  100     1   100     1   100     1   100     1
+-----------------------------------------------
+          0           1        2345        6789
+```
+
+Finally, we extract all 32-bit integers and combine them into an unsigned long integer, scaling each component with the weight appropriate to their ordinal position. In our example, we obtain the number `123456789`.
+
+
+### Date-time strings
 
 Parsing date-time strings starts by copying the string into an internal buffer of 32 bytes (the character `_` indicates an unspecified blank value):
 

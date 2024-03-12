@@ -16,7 +16,12 @@
 
 namespace simdparse
 {
-    inline std::string to_string(const integer& i)
+    inline std::string to_string(const decimal_integer& i)
+    {
+        return std::to_string(i.value);
+    }
+
+    inline std::string to_string(const hexadecimal_integer& i)
     {
         return std::to_string(i.value);
     }

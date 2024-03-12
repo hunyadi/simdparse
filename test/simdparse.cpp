@@ -1,5 +1,6 @@
 #include <simdparse/datetime.hpp>
-#include <simdparse/integer.hpp>
+#include <simdparse/decimal.hpp>
+#include <simdparse/hexadecimal.hpp>
 #include <simdparse/ipaddr.hpp>
 #include <simdparse/uuid.hpp>
 #include <simdparse/parse.hpp>
@@ -168,28 +169,53 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
     check_parse("f81d4fae7dec11d0a76500a0c91e6bf6", sample_uuid);
 
-    using simdparse::integer;
-    constexpr integer i1 = integer(56);
-    constexpr integer i2 = integer(84);
+    using simdparse::decimal_integer;
+    constexpr decimal_integer i1 = decimal_integer(56);
+    constexpr decimal_integer i2 = decimal_integer(84);
     static_assert(i1 < i2 && i2 > i1 && i1 != i2 && !(i1 == i2));
 
-    check_parse("0", integer(0));
-    check_parse("1", integer(1));
-    check_parse("12", integer(12));
-    check_parse("123", integer(123));
-    check_parse("1234", integer(1234));
-    check_parse("12345", integer(12345));
-    check_parse("123456", integer(123456));
-    check_parse("1234567", integer(1234567));
-    check_parse("12345678", integer(12345678));
-    check_parse("123456789", integer(123456789));
-    check_parse("1234567890", integer(1234567890));
-    check_parse("1234567812345678", integer(1234567812345678ull));
-    check_parse("123456781234567812", integer(123456781234567812ull));
-    check_parse("12345678123456781234", integer(12345678123456781234ull));
-    check_fail<integer>("-1");
-    check_fail<integer>("0xab");
-    check_fail<integer>("ff");
+    check_parse("0", decimal_integer(0));
+    check_parse("1", decimal_integer(1));
+    check_parse("12", decimal_integer(12));
+    check_parse("123", decimal_integer(123));
+    check_parse("1234", decimal_integer(1234));
+    check_parse("12345", decimal_integer(12345));
+    check_parse("123456", decimal_integer(123456));
+    check_parse("1234567", decimal_integer(1234567));
+    check_parse("12345678", decimal_integer(12345678));
+    check_parse("123456789", decimal_integer(123456789));
+    check_parse("1234567890", decimal_integer(1234567890));
+    check_parse("1234567812345678", decimal_integer(1234567812345678ull));
+    check_parse("123456781234567812", decimal_integer(123456781234567812ull));
+    check_parse("12345678123456781234", decimal_integer(12345678123456781234ull));
+    check_fail<decimal_integer>("-1");
+    check_fail<decimal_integer>("0xab");
+    check_fail<decimal_integer>("ff");
+
+    using simdparse::hexadecimal_integer;
+    constexpr hexadecimal_integer h1 = hexadecimal_integer(56);
+    constexpr hexadecimal_integer h2 = hexadecimal_integer(84);
+    static_assert(h1 < h2 && h2 > h1 && h1 != h2 && !(h1 == h2));
+
+    check_parse("0", hexadecimal_integer(0));
+    check_parse("1", hexadecimal_integer(1));
+    check_parse("f", hexadecimal_integer(15));
+    check_parse("12", hexadecimal_integer(0x12));
+    check_parse("123", hexadecimal_integer(0x123));
+    check_parse("1234", hexadecimal_integer(0x1234));
+    check_parse("12345", hexadecimal_integer(0x12345));
+    check_parse("123456", hexadecimal_integer(0x123456));
+    check_parse("1234567", hexadecimal_integer(0x1234567));
+    check_parse("12345678", hexadecimal_integer(0x12345678));
+    check_parse("123456789", hexadecimal_integer(0x123456789));
+    check_parse("123456789a", hexadecimal_integer(0x123456789a));
+    check_parse("123456789ab", hexadecimal_integer(0x123456789ab));
+    check_parse("123456789abc", hexadecimal_integer(0x123456789abc));
+    check_parse("123456789abcd", hexadecimal_integer(0x123456789abcd));
+    check_parse("123456789abcde", hexadecimal_integer(0x123456789abcde));
+    check_parse("123456789abcdef", hexadecimal_integer(0x123456789abcdef));
+    check_parse("fedcba9876543210", hexadecimal_integer(0xfedcba9876543210ull));
+    check_parse("0xfedcba9876543210", hexadecimal_integer(0xfedcba9876543210ull));
 
     // test code examples
     if (!example1() || !example2()) {

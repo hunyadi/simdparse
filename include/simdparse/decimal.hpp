@@ -20,33 +20,33 @@
 
 namespace simdparse
 {
-    struct integer
+    struct decimal_integer
     {
-        constexpr static std::string_view name = "integer";
+        constexpr static std::string_view name = "decimal integer";
 
-        constexpr integer()
+        constexpr decimal_integer()
         {}
 
-        constexpr integer(unsigned long long value)
+        constexpr decimal_integer(unsigned long long value)
             : value(value)
         {}
 
-        constexpr bool operator==(const integer& op) const
+        constexpr bool operator==(const decimal_integer& op) const
         {
             return value == op.value;
         }
 
-        constexpr bool operator!=(const integer& op) const
+        constexpr bool operator!=(const decimal_integer& op) const
         {
             return value != op.value;
         }
 
-        constexpr bool operator<(const integer& op) const
+        constexpr bool operator<(const decimal_integer& op) const
         {
             return value < op.value;
         }
 
-        constexpr bool operator>(const integer& op) const
+        constexpr bool operator>(const decimal_integer& op) const
         {
             return value > op.value;
         }
