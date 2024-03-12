@@ -429,8 +429,8 @@ namespace simdparse
             const __m128i values = _mm_maddubs_epi16(packed_integers, weights);
 
             // extract values
-            int16_t result[8];
-            _mm_storeu_si128(reinterpret_cast<__m128i*>(result), values);
+            alignas(__m128i) std::array<uint16_t, 8> result;
+            _mm_store_si128(reinterpret_cast<__m128i*>(result.data()), values);
 
             year = (result[0] * 100) + result[1];
             month = result[2];

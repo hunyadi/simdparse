@@ -168,6 +168,7 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", sample_uuid);
     check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
     check_parse("f81d4fae7dec11d0a76500a0c91e6bf6", sample_uuid);
+    // check_parse("F81D4FAE7DEC11D0A76500A0C91E6BF6", sample_uuid);
 
     using simdparse::decimal_integer;
     constexpr decimal_integer i1 = decimal_integer(56);
@@ -216,6 +217,7 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("123456789abcdef", hexadecimal_integer(0x123456789abcdef));
     check_parse("fedcba9876543210", hexadecimal_integer(0xfedcba9876543210ull));
     check_parse("0xfedcba9876543210", hexadecimal_integer(0xfedcba9876543210ull));
+    // check_parse("0xFEDCBA9876543210", hexadecimal_integer(0xfedcba9876543210ull));
 
     // test code examples
     if (!example1() || !example2()) {

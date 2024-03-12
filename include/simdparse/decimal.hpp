@@ -86,9 +86,11 @@ namespace simdparse
         /** Parses the string representation of an integer with SIMD instructions. */
         bool parse_simd(const std::string_view& str)
         {
-            char buf[16] = { '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' };
-            std::memcpy(buf + 16 - str.size(), str.data(), str.size());
-            const __m128i characters = _mm_loadu_si128(reinterpret_cast<const __m128i*>(buf));
+            alignas(__m128i) std::array<char, 16> buf = {
+                '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'
+            };
+            std::memcpy(buf.data() + 16 - str.size(), str.data(), str.size());
+            const __m128i characters = _mm_load_si128(reinterpret_cast<const __m128i*>(buf.data()));
 
             const __m128i lower_bound = _mm_set1_epi8('0');
             const __m128i upper_bound = _mm_set1_epi8('9');
@@ -115,8 +117,8 @@ namespace simdparse
             const __m128i values_digit4 = _mm_madd_epi16(values_digit2, scales_hundred);
 
             // extract 32-bit integer value corresponding to digit quadruplets
-            int32_t result[4];
-            _mm_storeu_si128(reinterpret_cast<__m128i*>(result), values_digit4);
+            alignas(__m128i) std::array<uint32_t, 4> result;
+            _mm_store_si128(reinterpret_cast<__m128i*>(result.data()), values_digit4);
             value = 1'000'000'000'000ull * result[0] + 100'000'000ull * result[1] + 10'000ull * result[2] + result[3];
             return true;
         }

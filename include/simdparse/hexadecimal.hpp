@@ -62,13 +62,15 @@ namespace simdparse
         /** Parses the string representation of an integer with SIMD instructions. */
         bool parse_hexadecimal(const std::string_view& str)
         {
-            char buf[16] = { '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0' };
-            std::memcpy(buf + 16 - str.size(), str.data(), str.size());
-            const __m128i characters = _mm_loadu_si128(reinterpret_cast<const __m128i*>(buf));
+            alignas(__m128i) std::array<char, 16> buf = {
+                '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'
+            };
+            std::memcpy(buf.data() + 16 - str.size(), str.data(), str.size());
+            const __m128i characters = _mm_load_si128(reinterpret_cast<const __m128i*>(buf.data()));
 
             // translate ASCII bytes to their value
             // i.e. 0x3132333435363738 -> 0x0102030405060708
-            // i.e. 0x3030656667686970 -> 0x00000a0b0c0d0e0f
+            // i.e. 0x3030616263646566 -> 0x00000a0b0c0d0e0f
             const __m128i sub = _mm_set1_epi8(0x2f);
             __m128i a = _mm_sub_epi8(characters, sub);
             const __m128i mask = _mm_set1_epi8(0x20);

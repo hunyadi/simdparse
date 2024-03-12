@@ -130,7 +130,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ## Implementation
 
-### Integers
+### Decimal strings
 
 To parse integers, we first copy the string of digits, right-aligned, into an internal buffer of 16 bytes pre-populated with `0` digits. The following ASCII character data is stored:
 
@@ -168,7 +168,6 @@ Next, we repeat the procedure, merging 16-bit integers into 32-bit integers:
 
 Finally, we extract all 32-bit integers and combine them into an unsigned long integer, scaling each component with the weight appropriate to their ordinal position. In our example, we obtain the number `123456789`.
 
-
 ### Date-time strings
 
 Parsing date-time strings starts by copying the string into an internal buffer of 32 bytes (the character `_` indicates an unspecified blank value):
@@ -178,20 +177,22 @@ YYYY-MM-DD hh:mm:ss.fffffffff___
 1984-10-24 23:59:59.123456789___
 ```
 
+If there are fewer than 9 fractional digits, the extra places are filled with `'0'`.
+
 The buffer is then read into a `__m256i` AVX2 register.
 
 Next, each character is checked against a lower bound and an upper bound, which depend on the character position:
 
-* `0` or `1` for first digit of month,
-* `0` to `3` for first digit of day,
-* `0` to `2` for first digit of hour,
-* `0` to `5` for first digit of minute and second,
-* `0` to `9` for other digits (e.g. year, second digit of hour, or fractional part),
-* exact match for separator characters `-`, `:` and `.`
+* `'0'` or `'1'` for first digit of month,
+* `'0'` to `'3'` for first digit of day,
+* `'0'` to `'2'` for first digit of hour,
+* `'0'` to `'5'` for first digit of minute and second,
+* `'0'` to `'9'` for other digits (e.g. year, second digit of hour, or fractional part),
+* exact match for separator characters `'-'`, `':'` and `'.'`
 
 If any character is outside the bounds, parsing fails.
 
-If all constraints match, the numeric value of the ASCII character `0` is subtracted from each byte. (The same is accomplished with a bitwise *AND* on each byte against `0x0f`.) This makes each position hold the numeric value the digit corresponds to.
+If all constraints match, the numeric value of the ASCII character `'0'` is subtracted from each byte. (The same is accomplished with a bitwise *AND* on each byte against `0x0f`.) This makes each position hold the numeric value the digit corresponds to.
 
 Next, digits are shuffled to pack parts together:
 
@@ -237,3 +238,49 @@ When multiplied and added, it produces the following output:
 ```
 
 We see that the number of seconds can be read from the register, and millisecond, microsecond and nanosecond parts can be obtained by adding two numbers.
+
+### Hexadecimal strings
+
+The first step in parsing a string of hexadecimal digits is converting their hexadecimal representation into their numerical value. Consider the following example with characters right-aligned in a buffer of 16 digits:
+
+```
+'0' '1' '2' '3' '4' '5' '6' '7' '8' '9' 'a' 'b' 'c' 'd' 'e' 'f'
+30  31  32  33  34  35  36  37  38  39  61  62  63  64  65  66
+```
+
+We create three masks by comparing each digit to a range of permitted values. One mask filters decimal digits `'0'...'9'`, another filters uppercase letters `'A'...'F'` and yet another filters lowercase letters `'a'...'f'`.
+
+We set a minimum value for the smallest element in each group: 48 (`0x30` = `'0'`) for decimal digits, 65 (`0x41` = `'A'`) for uppercase letters, and 97 (`0x61` = `'a'`) for lowercase letters. We subtract the corresponding minimum value from each character as matched by the mask.
+
+In our example, this will yield the following, with each number expressed in hexadecimal:
+
+```
+30 31 32 33 34 35 36 37 38 39 61 62 63 64 65 66
+ 0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+```
+
+Next, we rearrange the numeric values such that they correspond to little-endian byte order, and separate odd and even positions into 32-bit groups:
+
+```
+ f  d  b  9 |  e  c  a  8 |  7  5  3  1 |  6  4  2  0
+```
+
+This seemingly peculiar arrangement will become clear when we left-shift every second 32-bit word by 4:
+
+```
+ f  d  b  9 | e0 c0 a0 80 | 7  5  3  1 | 60 40 20  0
+```
+
+We can now see that if we horizontally add (as if with the operator `+`) consecutive 32-bit words, we recover the value represented by the first and second 32 bits of the original 64-bit number:
+
+```
+ef cd ab 89 | 67 45 23  1
+```
+
+Note that this is little-endian storage. The integer value is understood as the reverse order of bytes:
+
+```
+ 1 23 45 67 | 89 ab cd ef
+```
+
+In other words, we have obtained the numeric value represented by the original hexadecimal string.
