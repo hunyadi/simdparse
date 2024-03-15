@@ -103,9 +103,9 @@ namespace simdparse
         /** Parses an RFC 3339 date string with SIMD instructions. */
         bool parse(const std::string_view& str)
         {
-            char buf[16] = { 0 };
-            std::memcpy(buf, str.data(), str.size());
-            const __m128i characters = _mm_loadu_si128(reinterpret_cast<const __m128i*>(buf));
+            alignas(__m128i) std::array<char, 16> buf;
+            std::memcpy(buf.data(), str.data(), str.size());
+            const __m128i characters = _mm_load_si128(reinterpret_cast<const __m128i*>(buf.data()));
 
             // validate a date string `YYYY-MM-DD`
             const __m128i lower_bound = _mm_setr_epi8(
@@ -127,8 +127,8 @@ namespace simdparse
 
             const __m128i too_low = _mm_cmpgt_epi8(lower_bound, characters);
             const __m128i too_high = _mm_cmpgt_epi8(characters, upper_bound);
-            const int out_of_bounds = _mm_movemask_epi8(too_low) | _mm_movemask_epi8(too_high);
-            if (out_of_bounds) {
+            const __m128i out_of_bounds = _mm_or_si128(too_low, too_high);
+            if (_mm_movemask_epi8(out_of_bounds)) {
                 return false;
             }
 
@@ -404,8 +404,8 @@ namespace simdparse
 
             const __m128i too_low = _mm_cmpgt_epi8(lower_bound, characters);
             const __m128i too_high = _mm_cmpgt_epi8(characters, upper_bound);
-            const int out_of_bounds = _mm_movemask_epi8(too_low) | _mm_movemask_epi8(too_high);
-            if (out_of_bounds) {
+            const __m128i out_of_bounds = _mm_or_si128(too_low, too_high);
+            if (_mm_movemask_epi8(out_of_bounds)) {
                 return false;
             }
 
@@ -444,11 +444,11 @@ namespace simdparse
         /** Parses an RFC 3339 date-time string with a fractional part using SIMD instructions. */
         bool parse_date_time_fractional(const std::string_view& str)
         {
-            char buf[32];
-            std::memcpy(buf, str.data(), str.size());
-            std::memset(buf + str.size(), '0', 32 - str.size());
+            alignas(__m256i) std::array<char, 32> buf;
+            std::memcpy(buf.data(), str.data(), str.size());
+            std::memset(buf.data() + str.size(), '0', 32 - str.size());
 
-            const __m256i characters = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(buf));
+            const __m256i characters = _mm256_load_si256(reinterpret_cast<const __m256i*>(buf.data()));
 
             // validate a 32-byte partial date-time string `YYYY-MM-DDThh:mm:ss.fffffffff---`
             const __m256i lower_bound = _mm256_setr_epi8(
@@ -484,8 +484,8 @@ namespace simdparse
 
             const __m256i too_low = _mm256_cmpgt_epi8(lower_bound, characters);
             const __m256i too_high = _mm256_cmpgt_epi8(characters, upper_bound);
-            const int out_of_bounds = _mm256_movemask_epi8(too_low) | _mm256_movemask_epi8(too_high);
-            if (out_of_bounds) {
+            const __m256i out_of_bounds = _mm256_or_si256(too_low, too_high);
+            if (_mm256_movemask_epi8(out_of_bounds)) {
                 return false;
             }
 

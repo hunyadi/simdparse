@@ -97,8 +97,8 @@ namespace simdparse
 
             const __m128i too_low = _mm_cmpgt_epi8(lower_bound, characters);
             const __m128i too_high = _mm_cmpgt_epi8(characters, upper_bound);
-            const int out_of_bounds = _mm_movemask_epi8(too_low) | _mm_movemask_epi8(too_high);
-            if (out_of_bounds) {
+            const __m128i out_of_bounds = _mm_or_si128(too_low, too_high);
+            if (_mm_movemask_epi8(out_of_bounds)) {
                 return false;
             }
 
@@ -141,9 +141,9 @@ namespace simdparse
             const __m64 lower = _mm_set1_pi8('0');
             const __m64 upper = _mm_set1_pi8('9');
 
-            const __m64 out_lower = _mm_cmpgt_pi8(lower, characters);
-            const __m64 out_upper = _mm_cmpgt_pi8(characters, upper);
-            if (_mm_movemask_pi8(out_lower) | _mm_movemask_pi8(out_upper)) {
+            const __m64 too_low = _mm_cmpgt_pi8(lower, characters);
+            const __m64 too_high = _mm_cmpgt_pi8(characters, upper);
+            if (_mm_movemask_pi8(too_low) | _mm_movemask_pi8(too_high)) {
                 return false;
             }
 

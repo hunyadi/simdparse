@@ -62,23 +62,38 @@ namespace simdparse
         /** Parses the string representation of an integer with SIMD instructions. */
         bool parse_hexadecimal(const std::string_view& str)
         {
-            alignas(__m128i) std::array<char, 16> buf = {
-                '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'
-            };
+            alignas(__m128i) std::array<char, 16> buf;
+            std::memset(buf.data(), '0', 16 - str.size());
             std::memcpy(buf.data() + 16 - str.size(), str.data(), str.size());
             const __m128i characters = _mm_load_si128(reinterpret_cast<const __m128i*>(buf.data()));
+
+            const __m128i digit_lower = _mm_cmpgt_epi8(_mm_set1_epi8('0'), characters);
+            const __m128i digit_upper = _mm_cmpgt_epi8(characters, _mm_set1_epi8('9'));
+            const __m128i is_not_digit = _mm_or_si128(digit_lower, digit_upper);
+
+            // transform to lowercase
+            // 0b0011____  (digits 0-9)            -> 0b0011____ (digits)
+            // 0b0100____  (uppercase letters A-F) -> 0b0110____ (lowercase)
+            // 0b0110____  (lowercase letters a-f) -> 0b0110____ (lowercase)
+            const __m128i lowercase_characters = _mm_or_si128(characters, _mm_set1_epi8(0b00100000));
+            const __m128i alpha_lower = _mm_cmpgt_epi8(_mm_set1_epi8('a'), lowercase_characters);
+            const __m128i alpha_upper = _mm_cmpgt_epi8(lowercase_characters, _mm_set1_epi8('f'));
+            const __m128i is_not_alpha = _mm_or_si128(alpha_lower, alpha_upper);
+
+            const __m128i is_not_hex = _mm_and_si128(is_not_digit, is_not_alpha);
+            if (_mm_movemask_epi8(is_not_hex)) {
+                return false;
+            }
+
+            // build a mask to apply a different offset to digit and alpha
+            const __m128i digits_offset = _mm_set1_epi8(48);
+            const __m128i alpha_offset = _mm_set1_epi8(87);
 
             // translate ASCII bytes to their value
             // i.e. 0x3132333435363738 -> 0x0102030405060708
             // i.e. 0x3030616263646566 -> 0x00000a0b0c0d0e0f
-            const __m128i sub = _mm_set1_epi8(0x2f);
-            __m128i a = _mm_sub_epi8(characters, sub);
-            const __m128i mask = _mm_set1_epi8(0x20);
-            __m128i alpha = _mm_slli_epi64(_mm_and_si128(a, mask), 2);
-            const __m128i alpha_offset = _mm_set1_epi8(0x28);
-            const __m128i digits_offset = _mm_set1_epi8(0x01);
-            __m128i sub_mask = _mm_blendv_epi8(digits_offset, alpha_offset, alpha);
-            a = _mm_sub_epi8(a, sub_mask);
+            const __m128i hex_offset = _mm_blendv_epi8(digits_offset, alpha_offset, is_not_digit);
+            __m128i a = _mm_sub_epi8(lowercase_characters, hex_offset);
 
             // group in 32-bit integer slots, and byte-swap to LSB first
             const __m128i unweave = _mm_set_epi32(0x00020406, 0x01030507, 0x080a0c0e, 0x090b0d0f);

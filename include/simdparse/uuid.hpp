@@ -24,32 +24,27 @@ namespace simdparse
     {
         inline bool parse_uuid(__m256i characters, __m128i& value)
         {
-            const __m256i digit_lower = _mm256_cmpgt_epi8(characters, _mm256_set1_epi8('0' - 1));
-            const __m256i digit_upper = _mm256_cmpgt_epi8(_mm256_set1_epi8('9' + 1), characters);
-            const __m256i is_digit = _mm256_and_si256(digit_lower, digit_upper);
+            const __m256i digit_lower = _mm256_cmpgt_epi8(_mm256_set1_epi8('0'), characters);
+            const __m256i digit_upper = _mm256_cmpgt_epi8(characters, _mm256_set1_epi8('9'));
+            const __m256i is_not_digit = _mm256_or_si256(digit_lower, digit_upper);
 
-            const __m256i uppercase_lower = _mm256_cmpgt_epi8(characters, _mm256_set1_epi8('A' - 1));
-            const __m256i uppercase_upper = _mm256_cmpgt_epi8(_mm256_set1_epi8('F' + 1), characters);
-            const __m256i is_uppercase = _mm256_and_si256(uppercase_lower, uppercase_upper);
+            // transform to lowercase
+            // 0b0011____  (digits 0-9)            -> 0b0011____ (digits)
+            // 0b0100____  (uppercase letters A-F) -> 0b0110____ (lowercase)
+            // 0b0110____  (lowercase letters a-f) -> 0b0110____ (lowercase)
+            const __m256i lowercase_characters = _mm256_or_si256(characters, _mm256_set1_epi8(0b00100000));
+            const __m256i alpha_lower = _mm256_cmpgt_epi8(_mm256_set1_epi8('a'), lowercase_characters);
+            const __m256i alpha_upper = _mm256_cmpgt_epi8(lowercase_characters, _mm256_set1_epi8('f'));
+            const __m256i is_not_alpha = _mm256_or_si256(alpha_lower, alpha_upper);
 
-            const __m256i lowercase_lower = _mm256_cmpgt_epi8(characters, _mm256_set1_epi8('a' - 1));
-            const __m256i lowercase_upper = _mm256_cmpgt_epi8(_mm256_set1_epi8('f' + 1), characters);
-            const __m256i is_lowercase = _mm256_and_si256(lowercase_lower, lowercase_upper);
-
-            const __m256i is_alpha = _mm256_or_si256(is_uppercase, is_lowercase);
-
-            const int out_of_bounds = ~_mm256_movemask_epi8(is_digit) & ~_mm256_movemask_epi8(is_alpha);
-            if (out_of_bounds) {
+            const __m256i is_not_hex = _mm256_and_si256(is_not_digit, is_not_alpha);
+            if (_mm256_movemask_epi8(is_not_hex)) {
                 return false;
             }
 
             // build a mask to apply a different offset to digit and alpha
-            // 0b0011____  (numbers 0-9)           -> 0b0000____
-            // 0b0100____  (uppercase letters A-F) -> 0b0100____
-            // 0b0110____  (lowercase letters a-f) -> 0b0100____
-            const __m256i translated_characters = _mm256_and_si256(characters, _mm256_set1_epi8(0b01001111));
-            const __m256i digits_offset = _mm256_setzero_si256();
-            const __m256i alpha_offset = _mm256_set1_epi8(55);
+            const __m256i digits_offset = _mm256_set1_epi8(48);
+            const __m256i alpha_offset = _mm256_set1_epi8(87);
 
             // translate ASCII bytes to their value
             // i.e. 0x3132333435363738 -> 0x0102030405060708
@@ -57,8 +52,8 @@ namespace simdparse
             // i.e. 0x0102030405060708 -> 0x1002300450067008
             // horizontal add
             // i.e. 0x1002300450067008 -> 0x12345678
-            const __m256i sub_mask = _mm256_blendv_epi8(digits_offset, alpha_offset, is_alpha);
-            __m256i a = _mm256_sub_epi8(translated_characters, sub_mask);
+            const __m256i hex_offset = _mm256_blendv_epi8(digits_offset, alpha_offset, is_not_digit);
+            __m256i a = _mm256_sub_epi8(lowercase_characters, hex_offset);
             const __m256i unweave = _mm256_set_epi32(0x0f0d0b09, 0x0e0c0a08, 0x07050301, 0x06040200, 0x0f0d0b09, 0x0e0c0a08, 0x07050301, 0x06040200);
             a = _mm256_shuffle_epi8(a, unweave);
             const __m256i shift = _mm256_set_epi32(0x00000000, 0x00000004, 0x00000000, 0x00000004, 0x00000000, 0x00000004, 0x00000000, 0x00000004);
@@ -173,15 +168,15 @@ namespace simdparse
             const __m256i dash_shuffle = _mm256_set_epi32(0x80808080, 0x0f0e0d0c, 0x0b0a0908, 0x06050403, 0x80800f0e, 0x0c0b0a09, 0x07060504, 0x03020100);
 
             // remove dashes and pack hexadecimal ASCII bytes in a 256-bit integer
-            // lane 1: 01234567-89ab-cd -> 0123456789abcd--
-            // lane 2: ef-0123-456789ab -> 0123456789ab----
+            // lane 1: 01234567-89ab-cd -> 0123456789abcd__
+            // lane 2: ef-FEDC-BA987654 -> FEDCBA987654____
             __m256i x = _mm256_loadu_si256((__m256i*)str);
             x = _mm256_shuffle_epi8(x, dash_shuffle);
 
             // insert characters omitted
-            // lane 1: ef               -> 0123456789abcdef
+            // lane 1: ef______________ -> 0123456789abcdef
             x = _mm256_insert_epi16(x, *(uint16_t*)(str + 16), 7);
-            // lane 2: cdef             -> 0123456789abcdef
+            // lane 2: 3210____________ -> FEDCBA9876543210
             x = _mm256_insert_epi32(x, *(uint32_t*)(str + 32), 7);
 
             __m128i value;

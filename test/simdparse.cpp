@@ -145,6 +145,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     using simdparse::ipv4_addr;
     constexpr ipv4_addr sample_ipv4(192, 0, 2, 1);
+    check_parse("0.0.0.0", ipv4_addr());
     check_parse("192.0.2.1", sample_ipv4);
 
     using simdparse::ipv6_addr;
@@ -165,12 +166,18 @@ int main(int /*argc*/, char* /*argv*/[])
     if (sample_uuid != uuid(0xf81d4fae7dec11d0, 0xa76500a0c91e6bf6)) {
         throw std::runtime_error("UUID operands are not equal");
     }
-    check_parse("{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", sample_uuid);
-    check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
-    check_parse("F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6", sample_uuid);
+    check_parse("00000000000000000000000000000000", uuid());
     check_parse("f81d4fae7dec11d0a76500a0c91e6bf6", sample_uuid);
     check_parse("F81D4FAE7DEC11D0A76500A0C91E6BF6", sample_uuid);
+    check_parse("00000000-0000-0000-0000-000000000000", uuid());
+    check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
+    check_parse("F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6", sample_uuid);
+    check_parse("{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", sample_uuid);
     check_fail<uuid>("f81d4fae-7dec-zzzz-a765-00a0c91e6bf6");
+    check_fail<uuid>("/0000000-0000-0000-0000-000000000000");
+    check_fail<uuid>("@0000000-0000-0000-0000-000000000000");
+    check_fail<uuid>("[0000000-0000-0000-0000-000000000000");
+    check_fail<uuid>("{0000000-0000-0000-0000-000000000000");
 
     using simdparse::decimal_integer;
     constexpr decimal_integer i1 = decimal_integer(56);
@@ -179,6 +186,7 @@ int main(int /*argc*/, char* /*argv*/[])
 
     check_parse("0", decimal_integer(0));
     check_parse("1", decimal_integer(1));
+    check_parse("9", decimal_integer(9));
     check_parse("12", decimal_integer(12));
     check_parse("123", decimal_integer(123));
     check_parse("1234", decimal_integer(1234));
@@ -202,7 +210,11 @@ int main(int /*argc*/, char* /*argv*/[])
 
     check_parse("0", hexadecimal_integer(0));
     check_parse("1", hexadecimal_integer(1));
+    check_parse("9", hexadecimal_integer(9));
+    check_parse("a", hexadecimal_integer(10));
     check_parse("f", hexadecimal_integer(15));
+    check_parse("A", hexadecimal_integer(10));
+    check_parse("F", hexadecimal_integer(15));
     check_parse("12", hexadecimal_integer(0x12));
     check_parse("123", hexadecimal_integer(0x123));
     check_parse("1234", hexadecimal_integer(0x1234));
@@ -219,7 +231,8 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("123456789abcdef", hexadecimal_integer(0x123456789abcdef));
     check_parse("fedcba9876543210", hexadecimal_integer(0xfedcba9876543210ull));
     check_parse("0xfedcba9876543210", hexadecimal_integer(0xfedcba9876543210ull));
-    // check_parse("0xFEDCBA9876543210", hexadecimal_integer(0xfedcba9876543210ull));
+    check_parse("0xFEDCBA9876543210", hexadecimal_integer(0xfedcba9876543210ull));
+    check_fail<hexadecimal_integer>("fedcba9876543210a");
 
     // test code examples
     if (!example1() || !example2()) {
