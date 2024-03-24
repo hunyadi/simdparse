@@ -5,17 +5,19 @@ This header-only C++ library parses character strings into objects with efficien
 * long integers,
 * date and time objects, consisting of year, month, day, hour, minute, second and fractional parts (millisecond, microsecond and nanosecond),
 * IPv4 and IPv6 addresses,
-* UUIDs.
+* UUIDs,
+* Base64-encoded strings.
 
 Parsing employs a single instruction multiple data (SIMD) approach, operating on parts of the input string in parallel.
 
 ## Technical background
 
-Internally, the implementation uses AVX2 vector instructions (intrinsics) to
+Internally, the implementation uses AVX2 vector instructions (intrinsics) to parse
 
-* parse strings of decimal and hexadecimal digits into a C++ `unsigned long long`,
-* parse RFC 3339 date-time strings into C++ `datetime` objects (consisting of year, month, day, hour, minute, second and fractional part), and
-* parse RFC 4122 UUID strings or 32-digit hexadecimal strings into C++ `uuid` objects (stored internally as a 16-byte array).
+* strings of decimal and hexadecimal digits into a C++ `unsigned long long`,
+* RFC 3339 date-time strings into C++ `datetime` objects (consisting of year, month, day, hour, minute, second and fractional part),
+* RFC 4122 UUID strings or 32-digit hexadecimal strings into C++ `uuid` objects (stored internally as a 16-byte array), and
+* RFC 4648 Base64 strings encoded with a safe alphabet for URLs and file names into objects of type `vector<byte>`.
 
 For parsing IPv4 and IPv6 addresses, the parser calls the C function [inet_pton](https://man7.org/linux/man-pages/man3/inet_pton.3.html) in libc or Windows Sockets (WinSock2).
 
@@ -284,3 +286,7 @@ Note that this is little-endian storage. The integer value is understood as the 
 ```
 
 In other words, we have obtained the numeric value represented by the original hexadecimal string.
+
+### Base64 with URL-safe alphabet
+
+Base64 decoding with an alphabet safe both URLs and file names follows the [vector lookup algorithm](http://0x80.pl/notesen/2016-01-17-sse-base64-decoding.html#vector-lookup-pshufb-with-bitmask-new) described by Wojciech Muła. The main difference is that while in regular Base64, characters `+` and `/` occupy the same high nibble, in [modified Base64](https://datatracker.ietf.org/doc/html/rfc4648#section-5), character `-` has its own high nibble, whereas `_` shares the high nibble with uppercase letters. As such, SIMD comparison for equality is done on `_` instead of `/`. For extracting bytes, we use the [multipy-add variant](http://0x80.pl/notesen/2016-01-17-sse-base64-decoding.html#pack-multiply-add-variant-update). Modified Base64 does not have the padding character `=`. As opposed to the algorithms by Wojciech Muła, we use 32-byte AVX2 instructions (`__m256i`) with shuffle on two 16-byte lanes, not their 16-byte variants (`__m128i`).
