@@ -77,22 +77,19 @@ namespace simdparse
         {
             if (year < op.year) {
                 return -1;
-            }
-            else if (year > op.year) {
+            } else if (year > op.year) {
                 return 1;
             }
 
             if (month < op.month) {
                 return -1;
-            }
-            else if (month > op.month) {
+            } else if (month > op.month) {
                 return 1;
             }
 
             if (day < op.day) {
                 return -1;
-            }
-            else if (day > op.day) {
+            } else if (day > op.day) {
                 return 1;
             }
 
@@ -352,8 +349,7 @@ namespace simdparse
                 }
                 offset = tzoffset();
                 return true;
-            }
-            else {
+            } else {
                 // 1984-10-24 23:59:59.123456789
                 // 1984-10-24 23:59:59.123456
                 // 1984-10-24 23:59:59.123
@@ -543,8 +539,8 @@ namespace simdparse
             const __m256i values = _mm256_maddubs_epi16(packed_integers, weights);
 
             // extract values
-            int16_t result[16];
-            _mm256_storeu_si256(reinterpret_cast<__m256i*>(result), values);
+            alignas(__m256i) std::array<int16_t, 16> result;
+            _mm256_store_si256(reinterpret_cast<__m256i*>(result.data()), values);
 
             year = 100 * result[0] + result[1];
             month = result[2];
@@ -594,8 +590,7 @@ namespace simdparse
         {
             if (str.size() > 19) {
                 return parse_date_time_fractional(str);
-            }
-            else {
+            } else {
                 return parse_date_time(str);
             }
         }
@@ -715,8 +710,7 @@ namespace simdparse
                 _value = t;
                 _value *= 1'000'000;
                 _value += microsecond;
-            }
-            else {
+            } else {
                 _value = ~static_cast<int64_t>(0);
             }
         }

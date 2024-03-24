@@ -28,8 +28,7 @@ namespace simdparse
         T obj;
         if (obj.parse(str)) {
             return obj;
-        }
-        else {
+        } else {
             std::array<char, 256> buf;
             int n = std::snprintf(buf.data(), buf.size(), "expected: %s; got: %.32s (len = %zu)", T::name.data(), str.data(), str.size());
             throw parse_error(std::string(buf.data(), buf.data() + n));
@@ -61,7 +60,8 @@ namespace simdparse
         if (obj != ref)
         {
             std::array<char, 256> buf;
-            int n = std::snprintf(buf.data(), buf.size(), "expected: %s; got: %s", to_string(ref).c_str(), to_string(obj).c_str());
+            std::string rep = to_string(obj);
+            int n = std::snprintf(buf.data(), buf.size(), "expected: %s; got: %.32s (len = %zu)", to_string(ref).c_str(), rep.data(), rep.size());
             throw parse_error(std::string(buf.data(), buf.data() + n));
         }
     }

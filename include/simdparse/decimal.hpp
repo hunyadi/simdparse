@@ -14,7 +14,7 @@
 
 #if defined(__AVX2__)
 #include <immintrin.h>
-#elif (defined(_M_AMD64) || defined(_M_X64))
+#elif (defined(__i386__) || defined(__x86_64__))
 #include <tmmintrin.h>
 #endif
 
@@ -58,6 +58,8 @@ namespace simdparse
             return result.ec == std::errc{} && result.ptr == str.data() + str.size();
         }
 
+#if (defined(__AVX2__) || defined(__i386__) || defined(__x86_64__))
+    private:
         template<std::size_t Size>
         bool parse_integer(const std::string_view& str)
         {
@@ -75,11 +77,11 @@ namespace simdparse
                 }
                 value += val;
                 return true;
-            }
-            else {
+            } else {
                 return parse_simd(str);
             }
         }
+#endif
 
 #if defined(__AVX2__)
     private:
@@ -129,7 +131,7 @@ namespace simdparse
             return parse_integer<16>(str);
         }
 
-#elif (defined(_M_AMD64) || defined(_M_X64))
+#elif (defined(__i386__) || defined(__x86_64__))
     private:
         /** Parses the string representation of an integer with SIMD instructions. */
         bool parse_simd(const std::string_view& str)

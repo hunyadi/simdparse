@@ -1,3 +1,4 @@
+#include <simdparse/base64.hpp>
 #include <simdparse/datetime.hpp>
 #include <simdparse/decimal.hpp>
 #include <simdparse/hexadecimal.hpp>
@@ -12,8 +13,7 @@ static bool example1()
     datetime obj;
     if (parse(obj, str)) {
         return true;
-    }
-    else {
+    } else {
         return false;
     }
 }
@@ -33,6 +33,34 @@ static bool example2()
 
 int main(int /*argc*/, char* /*argv*/[])
 {
+    using simdparse::check_base64;
+    check_base64("", "");
+    check_base64("f", "Zg");
+    check_base64("fo", "Zm8");
+    check_base64("foo", "Zm9v");
+    check_base64("foob", "Zm9vYg");
+    check_base64("fooba", "Zm9vYmE");
+    check_base64("foobar", "Zm9vYmFy");
+    check_base64(
+        std::string_view(
+            "\x00\x10\x83\x10\x51\x87\x20\x92\x8b\x30\xd3\x8f\x41\x14\x93\x51"
+            "\x55\x97\x61\x96\x9b\x71\xd7\x9f\x82\x18\xa3\x92\x59\xa7\xa2\x9a"
+            "\xab\xb2\xdb\xaf\xc3\x1c\xb3\xd3\x5d\xb7\xe3\x9e\xbb\xf3\xdf\xbf",
+            48
+        ),
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    );
+    check_base64(
+        std::string_view(
+            "foobar"
+            "\x00\x10\x83\x10\x51\x87\x20\x92\x8b\x30\xd3\x8f\x41\x14\x93\x51"
+            "\x55\x97\x61\x96\x9b\x71\xd7\x9f\x82\x18\xa3\x92\x59\xa7\xa2\x9a"
+            "\xab\xb2\xdb\xaf\xc3\x1c\xb3\xd3\x5d\xb7\xe3\x9e\xbb\xf3\xdf\xbf",
+            54
+        ),
+        "Zm9vYmFyABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    );
+
     using simdparse::check_parse;
     using simdparse::check_fail;
 
