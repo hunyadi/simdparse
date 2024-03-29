@@ -6,6 +6,12 @@
 #include <simdparse/uuid.hpp>
 #include <simdparse/parse.hpp>
 
+template<std::size_t N>
+std::string_view to_string_view(std::array<char, N> a)
+{
+    return std::string_view(a.data(), a.size());
+}
+
 static bool example1()
 {
     using namespace simdparse;
@@ -33,15 +39,15 @@ static bool example2()
 
 int main(int /*argc*/, char* /*argv*/[])
 {
-    using simdparse::check_base64;
-    check_base64("", "");
-    check_base64("f", "Zg");
-    check_base64("fo", "Zm8");
-    check_base64("foo", "Zm9v");
-    check_base64("foob", "Zm9vYg");
-    check_base64("fooba", "Zm9vYmE");
-    check_base64("foobar", "Zm9vYmFy");
-    check_base64(
+    using simdparse::check_base64url;
+    check_base64url("", "");
+    check_base64url("f", "Zg");
+    check_base64url("fo", "Zm8");
+    check_base64url("foo", "Zm9v");
+    check_base64url("foob", "Zm9vYg");
+    check_base64url("fooba", "Zm9vYmE");
+    check_base64url("foobar", "Zm9vYmFy");
+    check_base64url(
         std::string_view(
             "\x00\x10\x83\x10\x51\x87\x20\x92\x8b\x30\xd3\x8f\x41\x14\x93\x51"
             "\x55\x97\x61\x96\x9b\x71\xd7\x9f\x82\x18\xa3\x92\x59\xa7\xa2\x9a"
@@ -50,7 +56,7 @@ int main(int /*argc*/, char* /*argv*/[])
         ),
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
     );
-    check_base64(
+    check_base64url(
         std::string_view(
             "foobar"
             "\x00\x10\x83\x10\x51\x87\x20\x92\x8b\x30\xd3\x8f\x41\x14\x93\x51"
@@ -201,11 +207,24 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6", sample_uuid);
     check_parse("F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6", sample_uuid);
     check_parse("{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", sample_uuid);
-    check_fail<uuid>("f81d4fae-7dec-zzzz-a765-00a0c91e6bf6");
-    check_fail<uuid>("/0000000-0000-0000-0000-000000000000");
-    check_fail<uuid>("@0000000-0000-0000-0000-000000000000");
-    check_fail<uuid>("[0000000-0000-0000-0000-000000000000");
-    check_fail<uuid>("{0000000-0000-0000-0000-000000000000");
+    constexpr std::array<char, 32> zero_uuid_str = { '0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0' };
+    for (std::size_t k = 0; k < zero_uuid_str.size(); ++k) {
+        std::array<char, 32> invalid_uuid_str = zero_uuid_str;
+        invalid_uuid_str[k] = 'h';  // illegal hexadecimal
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+        invalid_uuid_str[k] = '/';  // character before '0'
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+        invalid_uuid_str[k] = ':';  // character after '9'
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+        invalid_uuid_str[k] = '@';  // character before 'A'
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+        invalid_uuid_str[k] = '[';  // character after 'Z'
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+        invalid_uuid_str[k] = '`';  // character before 'a'
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+        invalid_uuid_str[k] = '{';  // character after 'z'
+        check_fail<uuid>(to_string_view(invalid_uuid_str));
+    }
 
     using simdparse::decimal_integer;
     constexpr decimal_integer i1 = decimal_integer(56);

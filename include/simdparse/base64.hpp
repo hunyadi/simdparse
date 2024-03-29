@@ -17,7 +17,7 @@
 
 namespace simdparse
 {
-    inline void check_base64(const std::string_view& str, const std::string_view& ref)
+    inline void check_base64url(const std::string_view& str, const std::string_view& ref)
     {
         std::basic_string<std::byte> in;
         in.resize(str.size());

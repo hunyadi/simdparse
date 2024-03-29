@@ -168,7 +168,16 @@ Next, we repeat the procedure, merging 16-bit integers into 32-bit integers:
           0           1        2345        6789
 ```
 
-Finally, we extract all 32-bit integers and combine them into an unsigned long integer, scaling each component with the weight appropriate to their ordinal position. In our example, we obtain the number `123456789`.
+Unfortunately, there are no AVX2 instructions to multiply and horizontally add 32-bit integers. As a workaround, we pack 32-bit integers into 16-bit slots with saturation. However, since all integers are within the 16-bit range, there is no data loss. Finally, we repeat the previous step but with different scale factors, merging 16-bit integers into 32-bit integers:
+
+```
+    0     1  2345  6789     0     0     0     0
+10000     1 10000     1     0     0     0     0
+-----------------------------------------------
+          1    23456789           0           0
+```
+
+Lastly, we extract the two 32-bit integers and combine them into an unsigned long integer, scaling each component with the weight appropriate to their ordinal position. In our example, we obtain the number `123456789`.
 
 ### Date-time strings
 

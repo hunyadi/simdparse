@@ -146,7 +146,7 @@ namespace simdparse
 #if defined(__AVX2__)
         bool parse_uuid_compact(const char* str)
         {
-            const __m256i characters = _mm256_loadu_si256((__m256i*)str);
+            const __m256i characters = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str));
             __m128i value;
             if (!detail::parse_uuid(characters, value)) {
                 return false;
@@ -170,14 +170,14 @@ namespace simdparse
             // remove dashes and pack hexadecimal ASCII bytes in a 256-bit integer
             // lane 1: 01234567-89ab-cd -> 0123456789abcd__
             // lane 2: ef-FEDC-BA987654 -> FEDCBA987654____
-            __m256i x = _mm256_loadu_si256((__m256i*)str);
+            __m256i x = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str));
             x = _mm256_shuffle_epi8(x, dash_shuffle);
 
             // insert characters omitted
             // lane 1: ef______________ -> 0123456789abcdef
-            x = _mm256_insert_epi16(x, *(uint16_t*)(str + 16), 7);
+            x = _mm256_insert_epi16(x, *reinterpret_cast<const uint16_t*>(str + 16), 7);
             // lane 2: 3210____________ -> FEDCBA9876543210
-            x = _mm256_insert_epi32(x, *(uint32_t*)(str + 32), 7);
+            x = _mm256_insert_epi32(x, *reinterpret_cast<const uint32_t*>(str + 32), 7);
 
             __m128i value;
             if (!detail::parse_uuid(x, value)) {

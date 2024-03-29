@@ -106,22 +106,32 @@ namespace simdparse
 
             // convert ASCII characters into digit value (offset from character `0`)
             // '1'  '2'  '3'  '4'  '5'  '6'  '7'  '8'  -->  1  2  3  4  5  6  7  8
-            const __m128i values_digit1 = _mm_sub_epi8(characters, lower_bound);
+            const __m128i values_digit_1 = _mm_sub_epi8(characters, lower_bound);
 
             // combine pairs of digits into a weighted sum of eight 16-bit integers
             // 1  2  3  4  5  6  7  8  -->  12  34  56  78
-            const __m128i scales_ten = _mm_setr_epi8(10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1);
-            const __m128i values_digit2 = _mm_maddubs_epi16(values_digit1, scales_ten);
+            const __m128i scales_10 = _mm_setr_epi8(10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1, 10, 1);
+            const __m128i values_digit_2 = _mm_maddubs_epi16(values_digit_1, scales_10);
 
             // combine consecutive 16-bit integers into a weighted sum of four 32-bit integers
             // 12  34  56  78  -->  1234  5678
-            const __m128i scales_hundred = _mm_setr_epi16(100, 1, 100, 1, 100, 1, 100, 1);
-            const __m128i values_digit4 = _mm_madd_epi16(values_digit2, scales_hundred);
+            const __m128i scales_100 = _mm_setr_epi16(100, 1, 100, 1, 100, 1, 100, 1);
+            const __m128i values_digit_4 = _mm_madd_epi16(values_digit_2, scales_100);
+
+            // there are no instructions to multiply and horizontally add 32-bit integers
+            // pack 32-bit integers into 16-bit slots (no data loss, saturation does not apply)
+            // 1234  5678  |  9012  3456  -->  1234  5678  9012  3456  |  0  0  0  0
+            const __m128i accumulator = _mm_packs_epi32(values_digit_4, _mm_setzero_si128());
+
+            // combine four 16-bit integers into a weighted sum of two 32-bit integers
+            // 1234  5678  9012  3456  -->  12345678  90123456
+            const __m128i scales_10000 = _mm_setr_epi16(10000, 1, 10000, 1, 0, 0, 0, 0);
+            const __m128i values_digit_8 = _mm_madd_epi16(accumulator, scales_10000);
 
             // extract 32-bit integer value corresponding to digit quadruplets
             alignas(__m128i) std::array<uint32_t, 4> result;
-            _mm_store_si128(reinterpret_cast<__m128i*>(result.data()), values_digit4);
-            value = 1'000'000'000'000ull * result[0] + 100'000'000ull * result[1] + 10'000ull * result[2] + result[3];
+            _mm_store_si128(reinterpret_cast<__m128i*>(result.data()), values_digit_8);
+            value = 100'000'000ull * result[0] + result[1];
             return true;
         }
 
