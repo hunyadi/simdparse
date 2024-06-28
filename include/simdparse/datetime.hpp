@@ -11,7 +11,7 @@
 #pragma once
 #include <array>
 #include <charconv>
-#include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <string_view>
 
@@ -66,6 +66,16 @@ namespace simdparse
         constexpr bool operator<(const date& op) const
         {
             return compare(op) < 0;
+        }
+
+        constexpr bool operator<=(const date& op) const
+        {
+            return compare(op) <= 0;
+        }
+
+        constexpr bool operator>=(const date& op) const
+        {
+            return compare(op) >= 0;
         }
 
         constexpr bool operator>(const date& op) const
@@ -176,9 +186,9 @@ namespace simdparse
     struct tzoffset
     {
         struct east_t {};
-        constexpr inline static east_t east;
+        constexpr inline static east_t east = east_t();
         struct west_t {};
-        constexpr inline static west_t west;
+        constexpr inline static west_t west = west_t();
 
         constexpr tzoffset()
         {}
@@ -676,6 +686,16 @@ namespace simdparse
             return _value < op._value;
         }
 
+        bool operator<=(const microtime& op) const
+        {
+            return _value <= op._value;
+        }
+
+        bool operator>=(const microtime& op) const
+        {
+            return _value >= op._value;
+        }
+
         bool operator>(const microtime& op) const
         {
             return _value > op._value;
@@ -723,6 +743,11 @@ namespace simdparse
             }
             assign(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.nanosecond / 1'000, dt.offset);
             return true;
+        }
+
+        int64_t value() const
+        {
+            return _value;
         }
 
     private:

@@ -7,7 +7,7 @@
 #include <simdparse/parse.hpp>
 
 template<std::size_t N>
-std::string_view to_string_view(std::array<char, N> a)
+std::string_view to_string_view(const std::array<char, N>& a)
 {
     return std::string_view(a.data(), a.size());
 }

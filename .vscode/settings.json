@@ -9,5 +9,6 @@
         "simdparse",
         "tzoffset"
     ],
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": true,
+    "C_Cpp.vcFormat.newLine.beforeElse": false
 }
