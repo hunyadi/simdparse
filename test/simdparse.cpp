@@ -155,6 +155,9 @@ int main(int /*argc*/, char* /*argv*/[])
     check_fail<datetime>("1984-10-24 23_59_59Z");
     check_fail<datetime>("1984-10-24 23:59:59_01:00");
 
+    // oversized string
+    check_fail<datetime>(",2023-03-30T00:36:16.556900+00:00,");
+
     using simdparse::microtime;
 
     // nanosecond truncation

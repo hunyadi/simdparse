@@ -14,6 +14,7 @@
 #include <cstring>
 #include <ctime>
 #include <string_view>
+#include <cassert>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define timegm _mkgmtime
@@ -107,8 +108,9 @@ namespace simdparse
         }
 
 #if defined(__AVX2__)
+    private:
         /** Parses an RFC 3339 date string with SIMD instructions. */
-        bool parse(const std::string_view& str)
+        bool parse_date(const std::string_view& str)
         {
             alignas(__m128i) std::array<char, 16> buf;
             std::memcpy(buf.data(), str.data(), str.size());
@@ -165,7 +167,8 @@ namespace simdparse
             return true;
         }
 #else
-        bool parse(const std::string_view& str)
+    private:
+        bool parse_date(const std::string_view& str)
         {
             using detail::parse_range;
 
@@ -176,6 +179,15 @@ namespace simdparse
                 ;
         }
 #endif
+    public:
+        bool parse(const std::string_view& str)
+        {
+            if (str.size() != 10) {
+                return false;
+            }
+
+            return parse_date(str);
+        }
 
     public:
         int year = 0;
@@ -225,6 +237,10 @@ namespace simdparse
 
         bool parse(const std::string_view& str)
         {
+            if (str.size() != 6) {
+                return false;
+            }
+
             using detail::parse_range;
 
             // -01:30
@@ -372,9 +388,8 @@ namespace simdparse
             }
         }
 
-    private:
-
 #if defined(__AVX2__)
+    private:
         /**
          * Parses an RFC 3339 date-time string with SIMD instructions.
          *
@@ -382,6 +397,8 @@ namespace simdparse
          */
         bool parse_date_time(const std::string_view& str)
         {
+            assert(str.size() == 19);
+
             const __m128i characters = _mm_loadu_si128(reinterpret_cast<const __m128i*>(str.data()));
 
             // validate a 16-byte partial date-time string `YYYY-MM-DDThh:mm`
@@ -450,6 +467,8 @@ namespace simdparse
         /** Parses an RFC 3339 date-time string with a fractional part using SIMD instructions. */
         bool parse_date_time_fractional(const std::string_view& str)
         {
+            assert(str.size() <= 29);
+
             alignas(__m256i) std::array<char, 32> buf;
             std::memcpy(buf.data(), str.data(), str.size());
             std::memset(buf.data() + str.size(), '0', 32 - str.size());
@@ -565,9 +584,12 @@ namespace simdparse
             return true;
         }
 #else
+    private:
         /** Parses an RFC 3339 date-time string. */
         bool parse_date_time(const std::string_view& str)
         {
+            assert(str.size() == 19);
+
             using detail::parse_range;
 
             // 1984-10-24 23:59:59
@@ -588,6 +610,8 @@ namespace simdparse
         /** Parses an RFC 3339 date-time string with a fractional part. */
         bool parse_date_time_fractional(const std::string_view& str)
         {
+            assert(str.size() <= 29);
+
             return parse_date_time(str.substr(0, 19))
                 && str[19] == '.'
                 && parse_fractional(str.substr(20))
@@ -598,7 +622,9 @@ namespace simdparse
         /** Parses an RFC 3339 date-time string without time zone offset. */
         bool parse_naive_date_time(const std::string_view& str)
         {
-            if (str.size() > 19) {
+            if (str.size() > 29 || str.size() < 19) {
+                return false;
+            } else if (str.size() > 19) {
                 return parse_date_time_fractional(str);
             } else {
                 return parse_date_time(str);
@@ -608,6 +634,8 @@ namespace simdparse
         /** Parses the fractional part of a date-time string. */
         bool parse_fractional(const std::string_view& str)
         {
+            assert(str.size() <= 9);
+
             constexpr static std::array<unsigned long, 9> powers = {
                 1, 10, 100, 1'000, 10'000, 100'000, 1'000'000, 10'000'000, 100'000'000
             };
