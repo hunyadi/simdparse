@@ -742,6 +742,21 @@ namespace simdparse
             return static_cast<std::time_t>(_value / 1'000'000);
         }
 
+        date as_date() const
+        {
+            std::time_t timer = as_time();
+            std::tm* ts = gmtime(&timer);
+            if (ts != nullptr) {
+                return date(
+                    ts->tm_year + 1900,
+                    ts->tm_mon + 1,
+                    ts->tm_mday
+                );
+            } else {
+                return date();
+            }
+        }
+
         void assign(int year, unsigned int month, unsigned int day, unsigned int hour, unsigned int minute, unsigned int second, unsigned long microsecond, const tzoffset& offset)
         {
             std::tm ts{};
@@ -752,9 +767,8 @@ namespace simdparse
             ts.tm_min = minute - offset.minutes() % 60;
             ts.tm_sec = second;
             ts.tm_isdst = 0;
-            errno = 0;
             std::time_t t = timegm(&ts);
-            if (!errno) {
+            if (t != static_cast<std::time_t>(-1)) {
                 _value = t;
                 _value *= 1'000'000;
                 _value += microsecond;

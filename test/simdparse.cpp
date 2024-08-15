@@ -37,6 +37,31 @@ static bool example2()
     return true;
 }
 
+struct assertion_error : std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
+
+void check_equals(int val, int ref)
+{
+    if (val != ref)
+    {
+        std::array<char, 256> buf;
+        int n = std::snprintf(buf.data(), buf.size(), "expected: %d; got: %d", ref, val);
+        throw assertion_error(std::string(buf.data(), buf.data() + n));
+    }
+}
+
+void check_equals(unsigned int val, unsigned int ref)
+{
+    if (val != ref)
+    {
+        std::array<char, 256> buf;
+        int n = std::snprintf(buf.data(), buf.size(), "expected: %u; got: %u", ref, val);
+        throw assertion_error(std::string(buf.data(), buf.data() + n));
+    }
+}
+
 int main(int /*argc*/, char* /*argv*/[])
 {
     using simdparse::check_base64url;
@@ -179,6 +204,11 @@ int main(int /*argc*/, char* /*argv*/[])
     // extreme year values
     check_parse("1000-01-01 23:59:59", microtime(1000, 1, 1, 23, 59, 59));
     check_parse("9999-12-31 23:59:59", microtime(9999, 12, 31, 23, 59, 59));
+
+    // conversion to date
+    check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().year, 1984);
+    check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().month, 10u);
+    check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().day, 24u);
 
     using simdparse::ipv4_addr;
     constexpr ipv4_addr sample_ipv4(192, 0, 2, 1);
