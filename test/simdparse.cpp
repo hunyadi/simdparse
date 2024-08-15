@@ -42,7 +42,7 @@ struct assertion_error : std::runtime_error
     using std::runtime_error::runtime_error;
 };
 
-void check_equals(int val, int ref)
+inline void check_equals(int val, int ref)
 {
     if (val != ref)
     {
@@ -52,7 +52,7 @@ void check_equals(int val, int ref)
     }
 }
 
-void check_equals(unsigned int val, unsigned int ref)
+inline void check_equals(unsigned int val, unsigned int ref)
 {
     if (val != ref)
     {
@@ -110,9 +110,17 @@ int main(int /*argc*/, char* /*argv*/[])
 
     using simdparse::datetime;
     using simdparse::tzoffset;
-    constexpr datetime dt(1984, 10, 24, 23, 59, 59, tzoffset(tzoffset::east, 1, 0));
+    constexpr tzoffset tz_east(tzoffset::east, 1, 0);
+    static_assert(tz_east.minutes() == 60);
+    constexpr tzoffset tz_west(tzoffset::west, 1, 30);
+    static_assert(tz_west.minutes() == -90);
+    constexpr datetime dt(1984, 10, 24, 23, 59, 59, tz_east);
     check_parse("1984-10-24 23:59:59+01:00", dt);
     check_parse("1984-10-24T23:59:59+01:00", dt);
+
+    constexpr datetime dt1(1984, 1, 1, 0, 0, 0);
+    constexpr datetime dt2(1982, 10, 24, 23, 59, 59, tzoffset(tzoffset::east, 1, 0));
+    static_assert(dt1 > dt2 && dt2 < dt1 && dt1 != dt2 && !(dt1 == dt2));
 
     // standard fractional part lengths
     check_parse("1984-01-01 01:02:03.000456789+00:00", datetime(1984, 1, 1, 1, 2, 3, 456789));
@@ -209,6 +217,18 @@ int main(int /*argc*/, char* /*argv*/[])
     check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().year, 1984);
     check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().month, 10u);
     check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().day, 24u);
+
+    // conversion to datetime
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().year, 1984);
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().month, 10u);
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().day, 24u);
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().hour, 23u);
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().minute, 59u);
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().second, 40u);
+    check_equals(microtime(1984, 10, 24, 23, 59, 40, 123000).as_datetime().nanosecond, 123000000u);
+
+    // extract fractional seconds
+    check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).microseconds(), 123000);
 
     using simdparse::ipv4_addr;
     constexpr ipv4_addr sample_ipv4(192, 0, 2, 1);

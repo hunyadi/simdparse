@@ -37,6 +37,7 @@ namespace simdparse
         }
     }
 
+    /** Represents a date according to the Gregorian calendar. */
     struct date
     {
         constexpr static std::string_view name = "date";
@@ -215,17 +216,37 @@ namespace simdparse
             _value = -static_cast<int>(60 * hour + minute);
         }
 
-        bool operator==(const tzoffset& op) const
+        constexpr bool operator==(const tzoffset& op) const
         {
             return _value == op._value;
         }
 
-        bool operator!=(const tzoffset& op) const
+        constexpr bool operator!=(const tzoffset& op) const
         {
             return _value != op._value;
         }
 
-        int minutes() const
+        constexpr bool operator<(const tzoffset& op) const
+        {
+            return _value < op._value;
+        }
+
+        constexpr bool operator<=(const tzoffset& op) const
+        {
+            return _value <= op._value;
+        }
+
+        constexpr bool operator>=(const tzoffset& op) const
+        {
+            return _value >= op._value;
+        }
+
+        constexpr bool operator>(const tzoffset& op) const
+        {
+            return _value > op._value;
+        }
+
+        constexpr int minutes() const
         {
             return _value;
         }
@@ -259,6 +280,7 @@ namespace simdparse
         int _value = 0;
     };
 
+    /** Date and time, with date according to the Gregorian calendar, and time as per the specified time zone. */
     struct datetime
     {
         constexpr static std::string_view name = "date-time";
@@ -306,7 +328,7 @@ namespace simdparse
             , offset(offset)
         {}
 
-        bool operator==(const datetime& op) const
+        constexpr bool operator==(const datetime& op) const
         {
             return year == op.year
                 && month == op.month
@@ -319,6 +341,84 @@ namespace simdparse
                 ;
         }
 
+        constexpr bool operator!=(const datetime& op) const
+        {
+            return !(*this == op);
+        }
+
+        constexpr bool operator<(const datetime& op) const
+        {
+            return compare(op) < 0;
+        }
+
+        constexpr bool operator<=(const datetime& op) const
+        {
+            return compare(op) <= 0;
+        }
+
+        constexpr bool operator>=(const datetime& op) const
+        {
+            return compare(op) >= 0;
+        }
+
+        constexpr bool operator>(const datetime& op) const
+        {
+            return compare(op) > 0;
+        }
+
+        constexpr int compare(const datetime& op) const
+        {
+            if (year < op.year) {
+                return -1;
+            } else if (year > op.year) {
+                return 1;
+            }
+
+            if (month < op.month) {
+                return -1;
+            } else if (month > op.month) {
+                return 1;
+            }
+
+            if (day < op.day) {
+                return -1;
+            } else if (day > op.day) {
+                return 1;
+            }
+
+            if (hour < op.hour) {
+                return -1;
+            } else if (hour > op.hour) {
+                return 1;
+            }
+
+            if (minute < op.minute) {
+                return -1;
+            } else if (minute > op.minute) {
+                return 1;
+            }
+
+            if (second < op.second) {
+                return -1;
+            } else if (second > op.second) {
+                return 1;
+            }
+
+            if (nanosecond < op.nanosecond) {
+                return -1;
+            } else if (nanosecond > op.nanosecond) {
+                return 1;
+            }
+
+            if (offset < op.offset) {
+                return -1;
+            } else if (offset > op.offset) {
+                return 1;
+            }
+
+            return 0;
+        }
+
         static constexpr datetime zero()
         {
             return datetime();
@@ -327,11 +427,6 @@ namespace simdparse
         static constexpr datetime max()
         {
             return datetime(9999, 12, 31, 23, 59, 59, 999999999);
-        }
-
-        bool operator!=(const datetime& op) const
-        {
-            return !(*this == op);
         }
 
         /** Parses a date-time string with an optional time zone offset. */
@@ -659,7 +754,7 @@ namespace simdparse
         tzoffset offset;
     };
 
-    /** A timestamp with microsecond precision. */
+    /** A UTC timestamp with microsecond precision. */
     struct microtime
     {
         constexpr static std::string_view name = "timestamp with microsecond precision";
@@ -699,6 +794,13 @@ namespace simdparse
             assign(year, month, day, hour, minute, second, microsecond, offset);
         }
 
+        static constexpr const int64_t UNSET = std::numeric_limits<int64_t>::min();
+
+        bool undefined() const
+        {
+            return _value == UNSET;
+        }
+
         bool operator==(const microtime& op) const
         {
             return _value == op._value;
@@ -732,31 +834,65 @@ namespace simdparse
         /** Microseconds fractional part of timestamp. */
         unsigned long microseconds() const
         {
+            if (undefined()) {
+                return 0;
+            }
+
             auto v = _value > 0 ? _value : -_value;
             return static_cast<unsigned long>(v % 1'000'000);
         }
 
-        /** The date and time component of the timestamp, up to seconds precision. */
+        /** Date and time component of the timestamp, up to seconds precision. */
         std::time_t as_time() const
         {
+            if (undefined()) {
+                return static_cast<std::time_t>(-1);  // signals error
+            }
+
             return static_cast<std::time_t>(_value / 1'000'000);
         }
 
+        /** Returns the Gregorian calendar date of this time instant. */
         date as_date() const
         {
             std::time_t timer = as_time();
             std::tm* ts = gmtime(&timer);
-            if (ts != nullptr) {
-                return date(
-                    ts->tm_year + 1900,
-                    ts->tm_mon + 1,
-                    ts->tm_mday
-                );
-            } else {
+            if (ts == nullptr) {
                 return date();
             }
+
+            return date(
+                ts->tm_year + 1900,
+                ts->tm_mon + 1,
+                ts->tm_mday
+            );
         }
 
+        /** Returns the (Gregorian) date and (UTC) time of this time instant. */
+        datetime as_datetime() const
+        {
+            if (undefined()) {
+                return datetime();
+            }
+
+            std::time_t timer = as_time();
+            std::tm* ts = gmtime(&timer);
+            if (ts == nullptr) {
+                return datetime();
+            }
+
+            return datetime(
+                ts->tm_year + 1900,
+                ts->tm_mon + 1,
+                ts->tm_mday,
+                ts->tm_hour,
+                ts->tm_min,
+                ts->tm_sec,
+                1000 * microseconds()
+            );
+        }
+
+        /** Sets the (Gregorian) date and time (with time zone). */
         void assign(int year, unsigned int month, unsigned int day, unsigned int hour, unsigned int minute, unsigned int second, unsigned long microsecond, const tzoffset& offset)
         {
             std::tm ts{};
@@ -773,7 +909,7 @@ namespace simdparse
                 _value *= 1'000'000;
                 _value += microsecond;
             } else {
-                _value = ~static_cast<int64_t>(0);
+                _value = UNSET;
             }
         }
 
@@ -787,6 +923,7 @@ namespace simdparse
             return true;
         }
 
+        /** Returns microseconds before/after epoch. */
         int64_t value() const
         {
             return _value;
@@ -794,6 +931,6 @@ namespace simdparse
 
     private:
         /** Microseconds before/after epoch. */
-        int64_t _value = ~static_cast<int64_t>(0);
+        int64_t _value = UNSET;
     };
 }
