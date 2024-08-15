@@ -34,6 +34,16 @@ namespace simdparse
             return value < op.value;
         }
 
+        constexpr bool operator<=(const hexadecimal_integer& op) const
+        {
+            return value <= op.value;
+        }
+
+        constexpr bool operator>=(const hexadecimal_integer& op) const
+        {
+            return value >= op.value;
+        }
+
         constexpr bool operator>(const hexadecimal_integer& op) const
         {
             return value > op.value;

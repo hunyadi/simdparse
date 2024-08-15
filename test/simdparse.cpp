@@ -98,7 +98,9 @@ int main(int /*argc*/, char* /*argv*/[])
     using simdparse::date;
     constexpr date d1(1984, 1, 1);
     constexpr date d2(1982, 9, 23);
-    static_assert(d1 > d2 && d2 < d1 && d1 != d2 && !(d1 == d2));
+    static_assert(d1 == d1 && d1 != d2 && !(d1 == d2));
+    static_assert(d1 > d2 && d2 < d1);
+    static_assert(d2 <= d1 && d1 <= d1 && d1 >= d1 && d1 >= d2);
     check_parse("1984-01-01", d1);
     check_parse("2024-10-24", date(2024, 10, 24));
     check_parse("1000-01-01", date(1000, 1, 1));
@@ -108,19 +110,25 @@ int main(int /*argc*/, char* /*argv*/[])
     check_fail<date>("1986-01-99");
     check_fail<date>("1986-99-01");
 
-    using simdparse::datetime;
     using simdparse::tzoffset;
     constexpr tzoffset tz_east(tzoffset::east, 1, 0);
     static_assert(tz_east.minutes() == 60);
     constexpr tzoffset tz_west(tzoffset::west, 1, 30);
     static_assert(tz_west.minutes() == -90);
+    static_assert(tz_east == tz_east && tz_east != tz_west && !(tz_east == tz_west));
+    static_assert(tz_west < tz_east && tz_east > tz_west);
+    static_assert(tz_west <= tz_east && tz_east <= tz_east && tz_east >= tz_east && tz_east >= tz_west);
+
+    using simdparse::datetime;
     constexpr datetime dt(1984, 10, 24, 23, 59, 59, tz_east);
     check_parse("1984-10-24 23:59:59+01:00", dt);
     check_parse("1984-10-24T23:59:59+01:00", dt);
 
     constexpr datetime dt1(1984, 1, 1, 0, 0, 0);
     constexpr datetime dt2(1982, 10, 24, 23, 59, 59, tzoffset(tzoffset::east, 1, 0));
-    static_assert(dt1 > dt2 && dt2 < dt1 && dt1 != dt2 && !(dt1 == dt2));
+    static_assert(dt1 == dt1 && dt1 != dt2 && !(dt1 == dt2));
+    static_assert(dt1 > dt2 && dt2 < dt1);
+    static_assert(dt2 <= dt1 && dt1 <= dt1 && dt1 >= dt1 && dt1 >= dt2);
 
     // standard fractional part lengths
     check_parse("1984-01-01 01:02:03.000456789+00:00", datetime(1984, 1, 1, 1, 2, 3, 456789));
@@ -192,6 +200,13 @@ int main(int /*argc*/, char* /*argv*/[])
     check_fail<datetime>(",2023-03-30T00:36:16.556900+00:00,");
 
     using simdparse::microtime;
+    constexpr microtime mt1 = microtime(10'001'000);  // 10s 1000us
+    constexpr microtime mt2 = microtime(20'002'000);  // 20s 2000us
+    static_assert(mt1.value() == 10'001'000);
+    static_assert(mt1.microseconds() == 1000);
+    static_assert(mt1 == mt1 && mt1 != mt2 && !(mt1 == mt2));
+    static_assert(mt2 > mt1 && mt1 < mt2);
+    static_assert(mt2 >= mt1 && mt1 >= mt1 && mt1 <= mt1 && mt1 <= mt2);
 
     // nanosecond truncation
     check_parse("1984-01-01 01:02:03.000456789Z", microtime(1984, 1, 1, 1, 2, 3, 456));
@@ -282,7 +297,9 @@ int main(int /*argc*/, char* /*argv*/[])
     using simdparse::decimal_integer;
     constexpr decimal_integer i1 = decimal_integer(56);
     constexpr decimal_integer i2 = decimal_integer(84);
-    static_assert(i1 < i2 && i2 > i1 && i1 != i2 && !(i1 == i2));
+    static_assert(i1 == i1 && i1 != i2 && !(i1 == i2));
+    static_assert(i1 < i2 && i2 > i1);
+    static_assert(i1 <= i2 && i2 <= i2 && i2 >= i2 && i2 >= i1);
 
     check_parse("0", decimal_integer(0));
     check_parse("1", decimal_integer(1));
@@ -306,7 +323,9 @@ int main(int /*argc*/, char* /*argv*/[])
     using simdparse::hexadecimal_integer;
     constexpr hexadecimal_integer h1 = hexadecimal_integer(56);
     constexpr hexadecimal_integer h2 = hexadecimal_integer(84);
-    static_assert(h1 < h2 && h2 > h1 && h1 != h2 && !(h1 == h2));
+    static_assert(h1 == h1 && h1 != h2 && !(h1 == h2));
+    static_assert(h1 < h2 && h2 > h1);
+    static_assert(h1 <= h2 && h2 <= h2 && h2 >= h2 && h2 >= h1);
 
     check_parse("0", hexadecimal_integer(0));
     check_parse("1", hexadecimal_integer(1));

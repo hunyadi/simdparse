@@ -48,6 +48,26 @@ namespace simdparse
             return _addr != op._addr;
         }
 
+        bool operator<(const ipv4_addr& op) const
+        {
+            return _addr < op._addr;
+        }
+
+        bool operator<=(const ipv4_addr& op) const
+        {
+            return _addr <= op._addr;
+        }
+
+        bool operator>=(const ipv4_addr& op) const
+        {
+            return _addr >= op._addr;
+        }
+
+        bool operator>(const ipv4_addr& op) const
+        {
+            return _addr > op._addr;
+        }
+
         constexpr std::size_t max_size() const
         {
             return _addr.max_size();
@@ -130,6 +150,26 @@ namespace simdparse
         bool operator!=(const ipv6_addr& op) const
         {
             return _addr != op._addr;
+        }
+
+        bool operator<(const ipv6_addr& op) const
+        {
+            return _addr < op._addr;
+        }
+
+        bool operator<=(const ipv6_addr& op) const
+        {
+            return _addr <= op._addr;
+        }
+
+        bool operator>=(const ipv6_addr& op) const
+        {
+            return _addr >= op._addr;
+        }
+
+        bool operator>(const ipv6_addr& op) const
+        {
+            return _addr > op._addr;
         }
 
         constexpr std::size_t max_size() const

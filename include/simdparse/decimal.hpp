@@ -46,6 +46,16 @@ namespace simdparse
             return value < op.value;
         }
 
+        constexpr bool operator<=(const decimal_integer& op) const
+        {
+            return value <= op.value;
+        }
+
+        constexpr bool operator>=(const decimal_integer& op) const
+        {
+            return value >= op.value;
+        }
+
         constexpr bool operator>(const decimal_integer& op) const
         {
             return value > op.value;

@@ -759,9 +759,10 @@ namespace simdparse
     {
         constexpr static std::string_view name = "timestamp with microsecond precision";
 
-        microtime() = default;
+        constexpr microtime()
+        {}
 
-        explicit microtime(int64_t ms)
+        constexpr explicit microtime(int64_t ms)
             : _value(ms)
         {}
 
@@ -796,43 +797,43 @@ namespace simdparse
 
         static constexpr const int64_t UNSET = std::numeric_limits<int64_t>::min();
 
-        bool undefined() const
+        constexpr bool undefined() const
         {
             return _value == UNSET;
         }
 
-        bool operator==(const microtime& op) const
+        constexpr bool operator==(const microtime& op) const
         {
             return _value == op._value;
         }
 
-        bool operator!=(const microtime& op) const
+        constexpr bool operator!=(const microtime& op) const
         {
             return _value != op._value;
         }
 
-        bool operator<(const microtime& op) const
+        constexpr bool operator<(const microtime& op) const
         {
             return _value < op._value;
         }
 
-        bool operator<=(const microtime& op) const
+        constexpr bool operator<=(const microtime& op) const
         {
             return _value <= op._value;
         }
 
-        bool operator>=(const microtime& op) const
+        constexpr bool operator>=(const microtime& op) const
         {
             return _value >= op._value;
         }
 
-        bool operator>(const microtime& op) const
+        constexpr bool operator>(const microtime& op) const
         {
             return _value > op._value;
         }
 
         /** Microseconds fractional part of timestamp. */
-        unsigned long microseconds() const
+        constexpr unsigned long microseconds() const
         {
             if (undefined()) {
                 return 0;
@@ -924,7 +925,7 @@ namespace simdparse
         }
 
         /** Returns microseconds before/after epoch. */
-        int64_t value() const
+        constexpr int64_t value() const
         {
             return _value;
         }

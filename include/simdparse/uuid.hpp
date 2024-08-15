@@ -119,6 +119,16 @@ namespace simdparse
             return _id < op._id;
         }
 
+        bool operator<=(const uuid& op) const
+        {
+            return _id <= op._id;
+        }
+
+        bool operator>=(const uuid& op) const
+        {
+            return _id >= op._id;
+        }
+
         bool operator>(const uuid& op) const
         {
             return _id > op._id;
