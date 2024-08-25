@@ -175,22 +175,28 @@ namespace simdparse
          */
         bool parse_uuid_rfc_4122(const char* str)
         {
-            const __m256i dash_shuffle = _mm256_set_epi32(0x80808080, 0x0f0e0d0c, 0x0b0a0908, 0x06050403, 0x80800f0e, 0x0c0b0a09, 0x07060504, 0x03020100);
+            // original hexadecimal digit sequence (as in input string):
+            // 01234567-89ab-cdef-FEDC-BA9876543210
 
             // remove dashes and pack hexadecimal ASCII bytes in a 256-bit integer
             // lane 1: 01234567-89ab-cd -> 0123456789abcd__
             // lane 2: ef-FEDC-BA987654 -> FEDCBA987654____
-            __m256i x = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str));
-            x = _mm256_shuffle_epi8(x, dash_shuffle);
+            const __m256i original = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str));
+            const __m256i dash_shuffle = _mm256_set_epi32(0x80808080, 0x0f0e0d0c, 0x0b0a0908, 0x06050403, 0x80800f0e, 0x0c0b0a09, 0x07060504, 0x03020100);
+            const __m256i x = _mm256_shuffle_epi8(original, dash_shuffle);
 
             // insert characters omitted
-            // lane 1: ef______________ -> 0123456789abcdef
-            x = _mm256_insert_epi16(x, *reinterpret_cast<const uint16_t*>(str + 16), 7);
-            // lane 2: 3210____________ -> FEDCBA9876543210
-            x = _mm256_insert_epi32(x, *reinterpret_cast<const uint32_t*>(str + 32), 7);
+            // lane 1: 0123456789abcd__ -> 0123456789abcdef
+            // lane 2 is unchanged
+            const int16_t* p16 = reinterpret_cast<const int16_t*>(str + 16);
+            const __m256i y = _mm256_insert_epi16(x, *p16, 7);
+            // lane 1 is unchanged
+            // lane 2: FEDCBA987654____ -> FEDCBA9876543210
+            const int32_t* p32 = reinterpret_cast<const int32_t*>(str + 32);
+            const __m256i z = _mm256_insert_epi32(y, *p32, 7);
 
             __m128i value;
-            if (!detail::parse_uuid(x, value)) {
+            if (!detail::parse_uuid(z, value)) {
                 return false;
             }
             _mm_storeu_si128(reinterpret_cast<__m128i*>(_id.data()), value);

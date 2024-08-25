@@ -49,6 +49,7 @@ endif()
 
 # test target configuration
 add_executable(simdparse-tests ${SIMDPARSE_LIBRARY_SOURCES})
+set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT simdparse-tests)
 target_link_libraries(simdparse-tests simdparse)
 
 # install configuration

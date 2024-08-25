@@ -24,6 +24,11 @@
 #include <immintrin.h>
 #endif
 
+ // check if 64-bit SSE2 instructions are available
+#if (defined(__GNUC__) && (defined(__x86_64__) || defined(__ppc64__))) || defined(_WIN64)
+#define SIMDPARSE_64
+#endif
+
 namespace simdparse
 {
     namespace detail
@@ -160,7 +165,14 @@ namespace simdparse
                 char c[8];
                 int64_t i;
             } value;
+
+#if defined(SIMDPARSE_64)
+            // 64-bit SSE2 instruction
             value.i = _mm_cvtsi128_si64(grouped_integers);
+#else
+            // equivalent 32-bit SSE2 instruction
+            _mm_storeu_si64(value.c, grouped_integers);
+#endif
 
             year = 1000 * value.c[0] + 100 * value.c[1] + 10 * value.c[2] + value.c[3];
             month = 10 * value.c[4] + value.c[5];
