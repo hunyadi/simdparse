@@ -134,10 +134,21 @@ namespace simdparse
             return _id > op._id;
         }
 
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
+        }
+
         /**
-         * Converts an UUIDv4 string representation to a 128-bit unsigned int.
+         * Converts an UUIDv4 string or a hexadecimal string to a 128-bit unsigned int.
          *
          * UUID string is expected in the 8-4-4-4-12 format, e.g. `f81d4fae-7dec-11d0-a765-00a0c91e6bf6`.
+         * The hexadecimal string is expected to have a length of 32 characters.
          */
         bool parse(const std::string_view& str)
         {
@@ -203,6 +214,7 @@ namespace simdparse
             return true;
         }
 #else
+        /** Converts a hexadecimal string of 32 characters to a 128-bit unsigned int. */
         bool parse_uuid_compact(const char* str)
         {
             int n = 0;
@@ -220,6 +232,11 @@ namespace simdparse
             return n == 32;
         }
 
+        /**
+         * Converts an UUIDv4 string representation to a 128-bit unsigned int.
+         *
+         * UUID string is expected in the 8-4-4-4-12 format, e.g. `f81d4fae-7dec-11d0-a765-00a0c91e6bf6`.
+         */
         bool parse_uuid_rfc_4122(const char* str)
         {
             int n = 0;

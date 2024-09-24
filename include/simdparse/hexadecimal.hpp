@@ -49,6 +49,19 @@ namespace simdparse
             return value > op.value;
         }
 
+        /** Parses a hexadecimal string into an integer value. */
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        /** Parses a hexadecimal string into an integer value. */
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
+        }
+
+        /** Parses a hexadecimal string into an integer value. */
         bool parse(const std::string_view& str)
         {
             if (str.size() > 2) {

@@ -79,6 +79,18 @@ namespace simdparse
         }
 
         /** Parses an IPv4 address string into an IPv4 address object. */
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        /** Parses an IPv4 address string into an IPv4 address object. */
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
+        }
+
+        /** Parses an IPv4 address string into an IPv4 address object. */
         bool parse(const std::string_view& str)
         {
             if (str.size() >= INET_ADDRSTRLEN) {
@@ -180,6 +192,18 @@ namespace simdparse
         const uint8_t* data() const
         {
             return _addr.data();
+        }
+
+        /** Parses an IPv6 address string into an IPv6 address object. */
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        /** Parses an IPv6 address string into an IPv6 address object. */
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
         }
 
         /** Parses an IPv6 address string into an IPv6 address object. */

@@ -442,6 +442,18 @@ namespace simdparse
         }
 
         /** Parses a date-time string with an optional time zone offset. */
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        /** Parses a date-time string with an optional time zone offset. */
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
+        }
+
+        /** Parses a date-time string with an optional time zone offset. */
         bool parse(const std::string_view& str)
         {
             if (str.size() < 19 || str.size() > 35) {
@@ -924,6 +936,16 @@ namespace simdparse
             } else {
                 _value = UNSET;
             }
+        }
+
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
         }
 
         bool parse(const std::string_view& str)

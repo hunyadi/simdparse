@@ -216,6 +216,18 @@ namespace simdparse
 
 #endif
 
+        /** Parses the string representation of a decimal integer into an integer value. */
+        bool parse(const char* beg, const char* end)
+        {
+            return parse(std::string_view(beg, end - beg));
+        }
+
+        /** Parses the string representation of a decimal integer into an integer value. */
+        bool parse(const char* beg, std::size_t siz)
+        {
+            return parse(std::string_view(beg, siz));
+        }
+
         unsigned long long value = 0;
     };
 }
