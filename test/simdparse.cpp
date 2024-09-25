@@ -353,6 +353,37 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("0xFEDCBA9876543210", hexadecimal_integer(0xfedcba9876543210ull));
     check_fail<hexadecimal_integer>("fedcba9876543210a");
 
+    using simdparse::month_to_ordinal;
+    static_assert(month_to_ordinal('J', 'a', 'n') == 1);
+    static_assert(month_to_ordinal('F', 'e', 'b') == 2);
+    static_assert(month_to_ordinal('M', 'a', 'r') == 3);
+    static_assert(month_to_ordinal('A', 'p', 'r') == 4);
+    static_assert(month_to_ordinal('M', 'a', 'y') == 5);
+    static_assert(month_to_ordinal('J', 'u', 'n') == 6);
+    static_assert(month_to_ordinal('J', 'u', 'l') == 7);
+    static_assert(month_to_ordinal('A', 'u', 'g') == 8);
+    static_assert(month_to_ordinal('S', 'e', 'p') == 9);
+    static_assert(month_to_ordinal('O', 'c', 't') == 10);
+    static_assert(month_to_ordinal('N', 'o', 'v') == 11);
+    static_assert(month_to_ordinal('D', 'e', 'c') == 12);
+
+    static_assert(month_to_ordinal('j', 'a', 'n') == 1);
+    static_assert(month_to_ordinal('f', 'e', 'b') == 2);
+    static_assert(month_to_ordinal('m', 'a', 'r') == 3);
+    static_assert(month_to_ordinal('a', 'p', 'r') == 4);
+    static_assert(month_to_ordinal('m', 'a', 'y') == 5);
+    static_assert(month_to_ordinal('j', 'u', 'n') == 6);
+    static_assert(month_to_ordinal('j', 'u', 'l') == 7);
+    static_assert(month_to_ordinal('a', 'u', 'g') == 8);
+    static_assert(month_to_ordinal('s', 'e', 'p') == 9);
+    static_assert(month_to_ordinal('o', 'c', 't') == 10);
+    static_assert(month_to_ordinal('n', 'o', 'v') == 11);
+    static_assert(month_to_ordinal('d', 'e', 'c') == 12);
+
+    static_assert(month_to_ordinal(' ', ' ', ' ') == 0);
+    static_assert(month_to_ordinal('a', 'b', 'c') == 0);
+    static_assert(month_to_ordinal('x', 'y', 'z') == 0);
+
     // test code examples
     if (!example1() || !example2()) {
         return 1;

@@ -1,5 +1,15 @@
 {
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}"
+    },
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
     "editor.formatOnSave": true,
+    "files.insertFinalNewline": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.formatting": "vcFormat",
     "C_Cpp.vcFormat.space.pointerReferenceAlignment": "left",
@@ -10,5 +20,12 @@
         "tzoffset"
     ],
     "cmake.configureOnOpen": true,
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
     "C_Cpp.vcFormat.newLine.beforeElse": false
 }

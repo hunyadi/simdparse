@@ -968,4 +968,115 @@ namespace simdparse
         /** Microseconds before/after epoch. */
         int64_t _value = UNSET;
     };
+
+    namespace detail
+    {
+        /**
+         * True if the character may be an ASCII letter character.
+         *
+         * Uppercase letters in ASCII have the binary representation of 0b010xxxxx.
+         * Lowercase letters have the binary representation of 0b011xxxxx.
+         */
+        inline constexpr bool maybe_letter(char c)
+        {
+            return (c & 0b11000000) == 0b01000000;
+        }
+
+        /**
+         * Compacts ASCII characters of the abbreviated English month name into a numeric value.
+         *
+         * This function is case insensitive as it takes into account the lowest 5 bits only.
+         */
+        inline constexpr std::uint16_t month_to_integer(char c1, char c2, char c3)
+        {
+            return
+                static_cast<std::uint16_t>(c1 & 0b00011111) << 10 |
+                static_cast<std::uint16_t>(c2 & 0b00011111) << 5 |
+                static_cast<std::uint16_t>(c3 & 0b00011111)
+                ;
+        }
+
+        /**
+         * Holds the numeric offset associated with each abbreviated month name.
+         *
+         * 0 for January, 1 for February, ..., 11 for December, 15 for invalid data.
+         */
+        constexpr static inline std::uint8_t month_offsets[] = {
+            7, 6, 4, 8, 9, 11, 2, 3, 0, 5, 10, 1, 15, 15, 15, 15
+        };
+
+        /**
+         * Holds the numeric value associated with each abbreviated month name.
+         */
+        constexpr static inline std::uint16_t month_values[] = {
+            month_to_integer('J', 'a', 'n'),
+            month_to_integer('F', 'e', 'b'),
+            month_to_integer('M', 'a', 'r'),
+            month_to_integer('A', 'p', 'r'),
+            month_to_integer('M', 'a', 'y'),
+            month_to_integer('J', 'u', 'n'),
+            month_to_integer('J', 'u', 'l'),
+            month_to_integer('A', 'u', 'g'),
+            month_to_integer('S', 'e', 'p'),
+            month_to_integer('O', 'c', 't'),
+            month_to_integer('N', 'o', 'v'),
+            month_to_integer('D', 'e', 'c'),
+            0, 0, 0, 0
+        };
+    }
+
+    /**
+     * Converts an abbreviated English month name into an ordinal.
+     *
+     * @param c1 1st character of the abbreviated English month name, e.g. `J` or `O`.
+     * @param c2 2nd character of the abbreviated English month name, e.g. `a` or `c`.
+     * @param c3 3rd character of the abbreviated English month name, e.g. `n` or `t`.
+     * @returns `1` to `12` for `Jan` to `Dec`, respectively, or `0` on parse error.
+     */
+    constexpr inline unsigned int month_to_ordinal(char c1, char c2, char c3)
+    {
+        using detail::maybe_letter, detail::month_values;
+
+        // constants for perfect hashing of months into a contiguous array of 12
+        constexpr unsigned int k = 68;
+        constexpr unsigned int p = 929;
+
+        // calculate the perfect hash value to get the proper index in the array
+        std::uint16_t value = detail::month_to_integer(c1, c2, c3);
+        unsigned int index = ((k * value) % p) & 0b00001111;
+
+        // check for false positives in the lookup table
+        unsigned int offset = detail::month_offsets[index];
+        if (maybe_letter(c1) && maybe_letter(c2) && maybe_letter(c3) && value == month_values[offset]) {
+            return offset + 1;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
+     * Converts an abbreviated English month name into an ordinal.
+     *
+     * @param abbr Abbreviated English month name, e.g. `Jan` or `Oct`.
+     * @returns `1` to `12` for `Jan` to `Dec`, respectively, or `0` on parse error.
+     */
+    inline unsigned int month_to_ordinal(const std::array<char, 3>& abbr)
+    {
+        return month_to_ordinal(abbr[0], abbr[1], abbr[2]);
+    }
+
+    /**
+     * Converts an abbreviated English month name into an ordinal.
+     *
+     * @param abbr Abbreviated English month name, e.g. `Jan` or `Oct`.
+     * @returns `1` to `12` for `Jan` to `Dec`, respectively, or `0` on parse error.
+     */
+    inline unsigned int month_to_ordinal(const std::string_view& abbr)
+    {
+        if (abbr.size() != 3) {
+            return 0;
+        } else {
+            return month_to_ordinal(abbr[0], abbr[1], abbr[2]);
+        }
+    }
 }
