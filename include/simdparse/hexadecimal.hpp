@@ -1,9 +1,13 @@
 #pragma once
 #include <string_view>
-#include <charconv>
+#include <cstdint>
 
 #if defined(__AVX2__)
+#include <array>
+#include <cstring>
 #include <immintrin.h>
+#else
+#include <charconv>
 #endif
 
 namespace simdparse
@@ -13,11 +17,13 @@ namespace simdparse
         constexpr static std::string_view name = "hexadecimal integer";
 
         constexpr hexadecimal_integer()
-        {}
+        {
+        }
 
-        constexpr hexadecimal_integer(uint64_t value)
+        constexpr hexadecimal_integer(std::uint64_t value)
             : value(value)
-        {}
+        {
+        }
 
         constexpr bool operator==(const hexadecimal_integer& op) const
         {
@@ -141,6 +147,6 @@ namespace simdparse
 #endif
 
     public:
-        uint64_t value = 0;
+        std::uint64_t value = 0;
     };
 }

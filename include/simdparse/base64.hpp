@@ -12,8 +12,10 @@
 #include "base64url.hpp"
 #include <string_view>
 #include <string>
+#include <array>
 #include <stdexcept>
-#include <cstdio>
+#include <cstddef>
+#include <cstring>
 
 namespace simdparse
 {

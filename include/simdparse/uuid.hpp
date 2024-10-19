@@ -10,8 +10,9 @@
 
 #pragma once
 #include <array>
-#include <cstdio>
 #include <string_view>
+#include <cstdint>
+#include <cstdio>
 
 #if defined(__AVX2__)
 #include <immintrin.h>
@@ -72,29 +73,33 @@ namespace simdparse
         constexpr static std::string_view name = "UUID";
 
         constexpr uuid()
-        {}
+        {
+        }
 
-        constexpr uuid(const std::array<uint8_t, 16>& a)
+        constexpr uuid(const std::array<std::uint8_t, 16>& a)
             : _id(a)
-        {}
+        {
+        }
 
-        constexpr uuid(uint64_t a, uint64_t b)
+        constexpr uuid(std::uint64_t a, std::uint64_t b)
             : _id{
-                static_cast<uint8_t>((a >> 56) & 0xff), static_cast<uint8_t>((a >> 48) & 0xff), static_cast<uint8_t>((a >> 40) & 0xff), static_cast<uint8_t>((a >> 32) & 0xff),
-                static_cast<uint8_t>((a >> 24) & 0xff), static_cast<uint8_t>((a >> 16) & 0xff), static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
-                static_cast<uint8_t>((b >> 56) & 0xff), static_cast<uint8_t>((b >> 48) & 0xff), static_cast<uint8_t>((b >> 40) & 0xff), static_cast<uint8_t>((b >> 32) & 0xff),
-                static_cast<uint8_t>((b >> 24) & 0xff), static_cast<uint8_t>((b >> 16) & 0xff), static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff) }
-        {}
+                static_cast<std::uint8_t>((a >> 56) & 0xff), static_cast<std::uint8_t>((a >> 48) & 0xff), static_cast<std::uint8_t>((a >> 40) & 0xff), static_cast<std::uint8_t>((a >> 32) & 0xff),
+                static_cast<std::uint8_t>((a >> 24) & 0xff), static_cast<std::uint8_t>((a >> 16) & 0xff), static_cast<std::uint8_t>((a >> 8) & 0xff), static_cast<std::uint8_t>(a & 0xff),
+                static_cast<std::uint8_t>((b >> 56) & 0xff), static_cast<std::uint8_t>((b >> 48) & 0xff), static_cast<std::uint8_t>((b >> 40) & 0xff), static_cast<std::uint8_t>((b >> 32) & 0xff),
+                static_cast<std::uint8_t>((b >> 24) & 0xff), static_cast<std::uint8_t>((b >> 16) & 0xff), static_cast<std::uint8_t>((b >> 8) & 0xff), static_cast<std::uint8_t>(b & 0xff) }
+        {
+        }
 
-        constexpr uuid(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+        constexpr uuid(std::uint32_t a, std::uint32_t b, std::uint32_t c, std::uint32_t d)
             : _id{
-                static_cast<uint8_t>((a >> 24) & 0xff), static_cast<uint8_t>((a >> 16) & 0xff), static_cast<uint8_t>((a >> 8) & 0xff), static_cast<uint8_t>(a & 0xff),
-                static_cast<uint8_t>((b >> 24) & 0xff), static_cast<uint8_t>((b >> 16) & 0xff), static_cast<uint8_t>((b >> 8) & 0xff), static_cast<uint8_t>(b & 0xff),
-                static_cast<uint8_t>((c >> 24) & 0xff), static_cast<uint8_t>((c >> 16) & 0xff), static_cast<uint8_t>((c >> 8) & 0xff), static_cast<uint8_t>(c & 0xff),
-                static_cast<uint8_t>((d >> 24) & 0xff), static_cast<uint8_t>((d >> 16) & 0xff), static_cast<uint8_t>((d >> 8) & 0xff), static_cast<uint8_t>(d & 0xff) }
-        {}
+                static_cast<std::uint8_t>((a >> 24) & 0xff), static_cast<std::uint8_t>((a >> 16) & 0xff), static_cast<std::uint8_t>((a >> 8) & 0xff), static_cast<std::uint8_t>(a & 0xff),
+                static_cast<std::uint8_t>((b >> 24) & 0xff), static_cast<std::uint8_t>((b >> 16) & 0xff), static_cast<std::uint8_t>((b >> 8) & 0xff), static_cast<std::uint8_t>(b & 0xff),
+                static_cast<std::uint8_t>((c >> 24) & 0xff), static_cast<std::uint8_t>((c >> 16) & 0xff), static_cast<std::uint8_t>((c >> 8) & 0xff), static_cast<std::uint8_t>(c & 0xff),
+                static_cast<std::uint8_t>((d >> 24) & 0xff), static_cast<std::uint8_t>((d >> 16) & 0xff), static_cast<std::uint8_t>((d >> 8) & 0xff), static_cast<std::uint8_t>(d & 0xff) }
+        {
+        }
 
-        const uint8_t* data() const
+        const std::uint8_t* data() const
         {
             return _id.data();
         }
@@ -154,11 +159,9 @@ namespace simdparse
         {
             if (str.size() == 38) {  // skip opening and closing curly braces
                 return parse_uuid_rfc_4122(str.data() + 1);
-            }
-            else if (str.size() == 36) {
+            } else if (str.size() == 36) {
                 return parse_uuid_rfc_4122(str.data());
-            }
-            else if (str.size() == 32) {
+            } else if (str.size() == 32) {
                 return parse_uuid_compact(str.data());
             }
             return false;
@@ -199,11 +202,11 @@ namespace simdparse
             // insert characters omitted
             // lane 1: 0123456789abcd__ -> 0123456789abcdef
             // lane 2 is unchanged
-            const int16_t* p16 = reinterpret_cast<const int16_t*>(str + 16);
+            const std::int16_t* p16 = reinterpret_cast<const std::int16_t*>(str + 16);
             const __m256i y = _mm256_insert_epi16(x, *p16, 7);
             // lane 1 is unchanged
             // lane 2: FEDCBA987654____ -> FEDCBA9876543210
-            const int32_t* p32 = reinterpret_cast<const int32_t*>(str + 32);
+            const std::int32_t* p32 = reinterpret_cast<const std::int32_t*>(str + 32);
             const __m256i z = _mm256_insert_epi32(y, *p32, 7);
 
             __m128i value;
@@ -256,6 +259,6 @@ namespace simdparse
 #endif
 
     private:
-        std::array<uint8_t, 16> _id = { 0 };
+        std::array<std::uint8_t, 16> _id = { 0 };
     };
 }

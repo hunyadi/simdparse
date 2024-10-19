@@ -10,9 +10,12 @@
 
 #pragma once
 #include "datetime.hpp"
+#include "decimal.hpp"
+#include "hexadecimal.hpp"
 #include "ipaddr.hpp"
-#include <cstdlib>
+#include "uuid.hpp"
 #include <string>
+#include <cstdlib>
 
 namespace simdparse
 {
@@ -88,7 +91,7 @@ namespace simdparse
 
     inline std::string to_string(const uuid& u)
     {
-        const uint8_t* id = u.data();
+        const std::uint8_t* id = u.data();
         char buf[37];
         int n = std::snprintf(buf, sizeof(buf),
             "%2hhx%2hhx%2hhx%2hhx-"

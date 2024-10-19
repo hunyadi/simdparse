@@ -11,10 +11,12 @@
 #pragma once
 #include <string>
 #include <string_view>
-#include <array>
 #include <cstddef>
+#include <cstdint>
 
 #if defined(__AVX2__)
+#include <array>
+#include <cstring>
 #include <immintrin.h>
 #endif
 
@@ -307,7 +309,7 @@ namespace simdparse
             );
             const __m256i packed_bytes = _mm256_shuffle_epi8(merge_abcd, order);
 
-            alignas(__m256i) std::array<uint32_t, 8> result;
+            alignas(__m256i) std::array<std::uint32_t, 8> result;
             _mm256_store_si256(reinterpret_cast<__m256i*>(result.data()), packed_bytes);
 
             std::memcpy(output, result.data(), 12);

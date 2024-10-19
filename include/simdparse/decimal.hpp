@@ -10,7 +10,10 @@
 
 #pragma once
 #include <string_view>
+#include <array>
 #include <charconv>
+#include <cstdint>
+#include <cstring>
 
 #if defined(__AVX2__)
 #include <immintrin.h>
@@ -25,11 +28,13 @@ namespace simdparse
         constexpr static std::string_view name = "decimal integer";
 
         constexpr decimal_integer()
-        {}
+        {
+        }
 
         constexpr decimal_integer(unsigned long long value)
             : value(value)
-        {}
+        {
+        }
 
         constexpr bool operator==(const decimal_integer& op) const
         {
@@ -139,7 +144,7 @@ namespace simdparse
             const __m128i values_digit_8 = _mm_madd_epi16(accumulator, scales_10000);
 
             // extract 32-bit integer value corresponding to digit quadruplets
-            alignas(__m128i) std::array<uint32_t, 4> result;
+            alignas(__m128i) std::array<std::uint32_t, 4> result;
             _mm_store_si128(reinterpret_cast<__m128i*>(result.data()), values_digit_8);
             value = 100'000'000ull * result[0] + result[1];
             return true;
@@ -158,7 +163,7 @@ namespace simdparse
         {
             char buf[8] = { '0', '0', '0', '0', '0', '0', '0', '0' };
             std::memcpy(buf + 8 - str.size(), str.data(), str.size());
-            const __m64 characters = _mm_cvtsi64_m64(*reinterpret_cast<int64_t*>(buf));
+            const __m64 characters = _mm_cvtsi64_m64(*reinterpret_cast<std::int64_t*>(buf));
 
             const __m64 lower = _mm_set1_pi8('0');
             const __m64 upper = _mm_set1_pi8('9');
@@ -196,7 +201,7 @@ namespace simdparse
             const __m64 values_digit4 = _mm_madd_pi16(values_digit2, scales_hundred);
 
             // extract value
-            int64_t intermediate = _mm_cvtm64_si64(values_digit4);
+            std::int64_t intermediate = _mm_cvtm64_si64(values_digit4);
             value = ((intermediate >> 32) & 0xffffffff) + (intermediate & 0xffffffff) * 10'000;
             return true;
         }

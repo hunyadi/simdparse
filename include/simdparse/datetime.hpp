@@ -10,10 +10,12 @@
 
 #pragma once
 #include <array>
+#include <limits>
+#include <string_view>
 #include <charconv>
+#include <cstdint>
 #include <cstring>
 #include <ctime>
-#include <string_view>
 #include <cassert>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -48,14 +50,16 @@ namespace simdparse
         constexpr static std::string_view name = "date";
 
         constexpr date()
-        {}
+        {
+        }
 
         /** Construct a date object from parts. */
         constexpr date(int year, unsigned int month, unsigned int day)
             : year(year)
             , month(month)
             , day(day)
-        {}
+        {
+        }
 
         constexpr bool operator==(const date& op) const
         {
@@ -163,7 +167,7 @@ namespace simdparse
             // extract values
             union {
                 char c[8];
-                int64_t i;
+                std::int64_t i;
             } value;
 
 #if defined(SIMDPARSE_64)
@@ -216,7 +220,8 @@ namespace simdparse
         constexpr inline static west_t west = west_t();
 
         constexpr tzoffset()
-        {}
+        {
+        }
 
         constexpr tzoffset(east_t, unsigned int hour, unsigned int minute)
         {
@@ -298,7 +303,8 @@ namespace simdparse
         constexpr static std::string_view name = "date-time";
 
         constexpr datetime()
-        {}
+        {
+        }
 
         /** Construct a date-time object from parts. */
         constexpr datetime(
@@ -317,7 +323,8 @@ namespace simdparse
             , minute(minute)
             , second(second)
             , offset(offset)
-        {}
+        {
+        }
 
         /** Construct a date-time object from parts. */
         constexpr datetime(
@@ -338,7 +345,8 @@ namespace simdparse
             , second(second)
             , nanosecond(nanosecond)
             , offset(offset)
-        {}
+        {
+        }
 
         constexpr bool operator==(const datetime& op) const
         {
@@ -571,7 +579,7 @@ namespace simdparse
             const __m128i values = _mm_maddubs_epi16(packed_integers, weights);
 
             // extract values
-            alignas(__m128i) std::array<uint16_t, 8> result;
+            alignas(__m128i) std::array<std::uint16_t, 8> result;
             _mm_store_si128(reinterpret_cast<__m128i*>(result.data()), values);
 
             year = (result[0] * 100) + result[1];
@@ -687,7 +695,7 @@ namespace simdparse
             const __m256i values = _mm256_maddubs_epi16(packed_integers, weights);
 
             // extract values
-            alignas(__m256i) std::array<int16_t, 16> result;
+            alignas(__m256i) std::array<std::int16_t, 16> result;
             _mm256_store_si256(reinterpret_cast<__m256i*>(result.data()), values);
 
             year = 100 * result[0] + result[1];
@@ -784,11 +792,13 @@ namespace simdparse
         constexpr static std::string_view name = "timestamp with microsecond precision";
 
         constexpr microtime()
-        {}
+        {
+        }
 
-        constexpr explicit microtime(int64_t ms)
+        constexpr explicit microtime(std::int64_t ms)
             : _value(ms)
-        {}
+        {
+        }
 
         /** Construct a timestamp from parts. */
         microtime(
@@ -819,7 +829,7 @@ namespace simdparse
             assign(year, month, day, hour, minute, second, microsecond, offset);
         }
 
-        static constexpr const int64_t UNSET = std::numeric_limits<int64_t>::min();
+        static constexpr const std::int64_t UNSET = std::numeric_limits<std::int64_t>::min();
 
         constexpr bool undefined() const
         {
@@ -959,14 +969,14 @@ namespace simdparse
         }
 
         /** Returns microseconds before/after epoch. */
-        constexpr int64_t value() const
+        constexpr std::int64_t value() const
         {
             return _value;
         }
 
     private:
         /** Microseconds before/after epoch. */
-        int64_t _value = UNSET;
+        std::int64_t _value = UNSET;
     };
 
     namespace detail
