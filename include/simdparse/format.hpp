@@ -74,6 +74,9 @@ namespace simdparse
     {
         std::time_t tv = ts.as_time();
         std::tm* tp = gmtime(&tv);
+        if (tp == nullptr) {
+            return std::string();
+        }
 
         // 1984-01-01 01:02:03.123456Z
         char buf[32];

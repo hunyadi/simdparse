@@ -930,6 +930,13 @@ namespace simdparse
         /** Sets the (Gregorian) date and time (with time zone). */
         void assign(int year, unsigned int month, unsigned int day, unsigned int hour, unsigned int minute, unsigned int second, unsigned long microsecond, const tzoffset& offset)
         {
+            // use 400-year periodicity of Gregorian calendar
+            int periods = 0;
+            while (year < 1900) {
+                year += 400;
+                ++periods;
+            }
+
             std::tm ts{};
             ts.tm_year = year - 1900;
             ts.tm_mon = month - 1;
@@ -941,8 +948,13 @@ namespace simdparse
             std::time_t t = timegm(&ts);
             if (t != static_cast<std::time_t>(-1)) {
                 _value = t;
+                _value -= periods * (146'097ll * 24 * 60 * 60);
                 _value *= 1'000'000;
-                _value += microsecond;
+                if (_value > 0) {
+                    _value += microsecond;
+                } else {
+                    _value -= microsecond;
+                }
             } else {
                 _value = UNSET;
             }

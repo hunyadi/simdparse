@@ -1,3 +1,13 @@
+/**
+ * simdparse: High-speed parser with vector instructions
+ * @see https://github.com/hunyadi/simdparse
+ *
+ * Copyright (c) 2024 Levente Hunyadi
+ *
+ * This work is licensed under the terms of the MIT license.
+ * For a copy, see <https://opensource.org/licenses/MIT>.
+ */
+
 #include <simdparse/base64.hpp>
 #include <simdparse/datetime.hpp>
 #include <simdparse/decimal.hpp>
@@ -202,11 +212,13 @@ int main(int /*argc*/, char* /*argv*/[])
     using simdparse::microtime;
     constexpr microtime mt1 = microtime(10'001'000);  // 10s 1000us
     constexpr microtime mt2 = microtime(20'002'000);  // 20s 2000us
+    constexpr microtime mt3 = microtime(-10'001'000);  // -10s 1000us
     static_assert(mt1.value() == 10'001'000);
     static_assert(mt1.microseconds() == 1000);
     static_assert(mt1 == mt1 && mt1 != mt2 && !(mt1 == mt2));
     static_assert(mt2 > mt1 && mt1 < mt2);
     static_assert(mt2 >= mt1 && mt1 >= mt1 && mt1 <= mt1 && mt1 <= mt2);
+    static_assert(mt3.microseconds() == 1000);
 
     // nanosecond truncation
     check_parse("1984-01-01 01:02:03.000456789Z", microtime(1984, 1, 1, 1, 2, 3, 456));
@@ -225,8 +237,18 @@ int main(int /*argc*/, char* /*argv*/[])
     check_parse("1984-01-01 01:15:00.000+02:30", microtime(1983, 12, 31, 22, 45, 0, 0));
 
     // extreme year values
+    if (microtime(1000, 1, 1, 23, 59, 59).undefined()) {
+        throw std::runtime_error("microtime doesn't construct for historical dates");
+    }
+    if (microtime(9999, 12, 31, 23, 59, 59).undefined()) {
+        throw std::runtime_error("microtime doesn't construct for future dates");
+    }
     check_parse("1000-01-01 23:59:59", microtime(1000, 1, 1, 23, 59, 59));
+    check_parse("1000-01-01 23:59:59.000999", microtime(1000, 1, 1, 23, 59, 59, 999));
+    check_parse("1899-01-01 23:59:59", microtime(1899, 1, 1, 23, 59, 59));
+    check_parse("1899-01-01 23:59:59.000999", microtime(1899, 1, 1, 23, 59, 59, 999));
     check_parse("9999-12-31 23:59:59", microtime(9999, 12, 31, 23, 59, 59));
+    check_parse("9999-12-31 23:59:59.000999", microtime(9999, 12, 31, 23, 59, 59, 999));
 
     // conversion to date
     check_equals(microtime(1984, 10, 24, 23, 59, 59, 123000).as_date().year, 1984);
